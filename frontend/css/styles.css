@@ -1,14 +1,17 @@
 :root {
-    --primary-color: #1a73e8;
-    --secondary-color: #f8f9fa;
-    --font-color: #3c4043;
-    --border-color: #dfe1e5;
+    --primary-color: #9c27b0;
+    --secondary-color: #e91e63;
+    --font-color: #f0f0f0;
+    --background-primary: #121212;
+    --background-secondary: #1c1c1c;
+    --background-tertiary: #212121;
+    --border-color: #333333;
     --danger-color: #d93025;
     --success-color: #1e8e3e;
     --warning-color: #f9ab00;
-    --shadow-light: 0 2px 4px rgba(0,0,0,0.05);
-    --shadow-medium: 0 4px 8px rgba(0,0,0,0.1);
-    --shadow-heavy: 0 8px 30px rgba(0,0,0,0.08);
+    --shadow-light: 0 2px 4px rgba(0,0,0,0.3);
+    --shadow-medium: 0 4px 8px rgba(0,0,0,0.4);
+    --shadow-heavy: 0 8px 30px rgba(0,0,0,0.5);
     --transition-fast: 0.2s ease-out;
     --transition-medium: 0.3s ease-out;
     --border-radius: 8px;
@@ -21,8 +24,8 @@
 }
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #f4f7f9;
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--background-primary);
     margin: 0;
     padding: 0;
     line-height: 1.6;
@@ -51,9 +54,10 @@ body {
     max-width: 1300px;
     margin: 20px auto;
     padding: 30px;
-    background: white;
+    background: var(--background-secondary);
     border-radius: var(--border-radius-large);
     box-shadow: var(--shadow-heavy);
+    border: 1px solid var(--border-color);
 }
 
 .login-container {
@@ -113,13 +117,14 @@ input, select, textarea {
     border-radius: var(--border-radius);
     font-size: 14px;
     transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
-    background-color: white;
+    background-color: var(--background-tertiary);
+    color: var(--font-color);
 }
 
 input:focus, select:focus, textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.1);
+    box-shadow: 0 0 0 3px rgba(156, 39, 176, 0.3);
 }
 
 input:invalid {
@@ -145,7 +150,7 @@ button {
 }
 
 button:hover {
-    background-color: #1557b0;
+    background-color: #7b1fa2;
     transform: translateY(-1px);
     box-shadow: var(--shadow-medium);
 }
@@ -155,7 +160,7 @@ button:active {
 }
 
 button:disabled {
-    background-color: #ccc;
+    background-color: #555;
     cursor: not-allowed;
     transform: none;
     box-shadow: none;
@@ -163,12 +168,12 @@ button:disabled {
 
 .btn-secondary {
     background-color: var(--secondary-color);
-    color: var(--font-color);
-    border: 1px solid var(--border-color);
+    color: white;
+    border: 1px solid var(--secondary-color);
 }
 
 .btn-secondary:hover {
-    background-color: #e8eaed;
+    background-color: #c2185b;
 }
 
 .btn-danger {
@@ -189,7 +194,7 @@ button:disabled {
 
 /* Module styles */
 .module {
-    background-color: var(--secondary-color);
+    background-color: var(--background-tertiary);
     padding: 20px;
     border-radius: var(--border-radius);
     margin-top: 20px;
@@ -205,7 +210,7 @@ button:disabled {
 }
 
 .stat-card {
-    background: white;
+    background: var(--background-secondary);
     padding: 24px;
     border-radius: var(--border-radius);
     text-align: center;
@@ -229,8 +234,9 @@ button:disabled {
 
 .stat-label {
     font-size: 14px;
-    color: #5f6368;
+    color: var(--font-color);
     font-weight: 500;
+    opacity: 0.8;
 }
 
 /* Status breakdown */
@@ -245,7 +251,7 @@ button:disabled {
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    background: white;
+    background: var(--background-secondary);
     margin-bottom: 8px;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
@@ -253,7 +259,7 @@ button:disabled {
 }
 
 #status-breakdown li:hover {
-    background-color: #f8f9fa;
+    background-color: var(--background-tertiary);
 }
 
 /* Table styles */
@@ -261,13 +267,14 @@ button:disabled {
     overflow-x: auto;
     border-radius: var(--border-radius);
     border: 1px solid var(--border-color);
-    background: white;
+    background: var(--background-secondary);
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
     margin: 0;
+    background: var(--background-secondary);
 }
 
 th, td {
@@ -275,19 +282,20 @@ th, td {
     text-align: left;
     border-bottom: 1px solid var(--border-color);
     white-space: nowrap;
+    color: var(--font-color);
 }
 
 th {
-    background-color: var(--secondary-color);
+    background-color: var(--background-tertiary);
     font-weight: 600;
-    color: var(--font-color);
+    color: var(--primary-color);
     position: sticky;
     top: 0;
     z-index: 10;
 }
 
 tr:hover {
-    background-color: #f8f9fa;
+    background-color: var(--background-tertiary);
 }
 
 tr:last-child td {
@@ -338,15 +346,16 @@ tr:last-child td {
 }
 
 .modal-content {
-    background: white;
+    background: var(--background-secondary);
+    margin: 5% auto;
     padding: 30px;
     border-radius: var(--border-radius-large);
     width: 90%;
     max-width: 500px;
-    max-height: 80vh;
-    overflow-y: auto;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     animation: modalSlideIn 0.3s ease-out;
+    border: 1px solid var(--border-color);
 }
 
 @keyframes modalSlideIn {
@@ -369,7 +378,7 @@ tr:last-child td {
 
 /* Spoof calling specific styles */
 .spoof-controls {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
     color: white;
     padding: 24px;
     border-radius: var(--border-radius-large);
@@ -412,7 +421,7 @@ tr:last-child td {
 
 /* Call session status */
 .call-session {
-    background: white;
+    background: var(--background-secondary);
     border: 2px solid var(--primary-color);
     border-radius: var(--border-radius-large);
     padding: 20px;
@@ -421,9 +430,9 @@ tr:last-child td {
 }
 
 @keyframes pulse {
-    0% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0.4); }
-    70% { box-shadow: 0 0 0 10px rgba(26, 115, 232, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(26, 115, 232, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(156, 39, 176, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(156, 39, 176, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(156, 39, 176, 0); }
 }
 
 .session-info {
