@@ -3,3 +3,4 @@
 
 # Archivo de variables de entorno (Contiene secretos)
 /backend/.env
+.env

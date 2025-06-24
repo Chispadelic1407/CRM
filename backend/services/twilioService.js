@@ -18,7 +18,7 @@ class TwilioService {
             this.client = null;
         } else {
             try {
-                this.client = twilio(accountSid, authToken);
+                this.client = Twilio(accountSid, authToken);
                 logger.info('TwilioService initialized with real Twilio credentials');
             } catch (error) {
                 logger.error('Failed to initialize Twilio client, falling back to demo mode', { error: error.message });
