@@ -30,6 +30,7 @@ rsync -av --exclude='node_modules' \
           --exclude='README*.md' \
           --exclude='.vercelignore' \
           --exclude='vercel.json' \
+          --exclude='database.sqlite' \
           ../. crm-twilio-deploy/
 
 echo "✅ Deployment package prepared"
