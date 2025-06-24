@@ -12,7 +12,11 @@ const logger = require('./utils/logger');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { cacheMiddleware, warmCache, getCacheStats } = require('./middleware/cache');
 const TwilioService = require('./services/twilioService');
+const DatabaseService = require('./services/databaseService');
 const spoofCallingRoutes = require('./routes/spoofCalling');
+const aiRoutes = require('./routes/ai');
+const advisorRoutes = require('./routes/advisors');
+const contactRoutes = require('./routes/contacts');
 
 // Validate environment variables
 const requiredEnvVars = [
@@ -39,6 +43,16 @@ try {
     logger.info('Twilio service initialized successfully');
 } catch (error) {
     logger.error('Failed to initialize Twilio service', { error: error.message });
+    process.exit(1);
+}
+
+// Initialize Database service
+let databaseService;
+try {
+    databaseService = new DatabaseService();
+    logger.info('Database service initialized successfully');
+} catch (error) {
+    logger.error('Failed to initialize Database service', { error: error.message });
     process.exit(1);
 }
 
@@ -221,6 +235,11 @@ app.post('/make-call', async (req, res) => {
 // Mount spoof calling routes
 app.use('/api/spoof', spoofCallingRoutes);
 
+// Mount AI and database management routes
+app.use('/api/ai', aiRoutes);
+app.use('/api/advisors', advisorRoutes);
+app.use('/api/contacts', contactRoutes);
+
 // Serve static files from frontend
 app.use(express.static(path.join(__dirname, '../frontend'), {
     maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
@@ -306,6 +325,14 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
         environment: process.env.NODE_ENV || 'development',
         pid: process.pid
     });
+    
+    // Initialize database
+    try {
+        await databaseService.initialize();
+        logger.info('Database initialized successfully');
+    } catch (error) {
+        logger.error('Failed to initialize database', { error: error.message });
+    }
     
     // Warm up cache
     await warmCache();
