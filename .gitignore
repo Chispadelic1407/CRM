@@ -1,5 +1,32 @@
 # Dependencias de Node.js
 /backend/node_modules
+node_modules/
 
 # Archivo de variables de entorno (Contiene secretos)
 /backend/.env
+.env
+.env.production
+.env.local
+.env.test
+
+# Deployment packages
+deployment-package/
+
+# Credentials and sensitive files
+CREDENTIALS.txt
+
+# Logs
+logs/
+*.log
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Backup files
+backups/
+
+# Temporary files
+temp/
+tmp/
