@@ -251,8 +251,12 @@ app.use(express.static(path.join(__dirname, '../frontend'), {
     lastModified: true
 }));
 
-// Catch-all handler for SPA
-app.get('*', (req, res) => {
+// Catch-all handler for SPA (only for non-API routes)
+app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+        return next();
+    }
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
