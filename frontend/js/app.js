@@ -1,16 +1,17 @@
 // Main Application JavaScript
 class CRMApp {
     constructor() {
-        this.baseUrl = window.location.origin;
+        this.baseUrl = 'http://localhost:3001';
         this.currentUser = null;
         this.contacts = [];
+        this.authToken = null;
         this.init();
     }
 
     init() {
         this.setupSecurityFeatures();
         this.bindEvents();
-        this.loadContacts();
+        this.checkExistingAuth();
         this.startDashboardUpdates();
     }
 
@@ -150,32 +151,93 @@ class CRMApp {
             return;
         }
 
-        // Simulate login (replace with actual authentication)
-        if ((username === 'admin' && password === 'admin123') || 
-            (username === 'asesor' && password === 'asesor123')) {
-            
-            this.currentUser = {
-                username: username,
-                role: username === 'admin' ? 'admin' : 'asesor'
-            };
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ username, password })
+            });
 
-            document.getElementById('login-container').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            
-            this.setupUserInterface();
-            this.showToast(`Welcome ${username}!`, 'success');
-        } else {
-            this.showToast('Invalid credentials', 'error');
+            const data = await response.json();
+
+            if (data.success) {
+                // Store token and user info
+                localStorage.setItem('authToken', data.token);
+                localStorage.setItem('currentUser', JSON.stringify(data.user));
+                
+                this.currentUser = data.user;
+                this.authToken = data.token;
+
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                this.setupUserInterface();
+                this.showToast(`Welcome ${data.user.username}!`, 'success');
+                
+                // Load contacts after successful login
+                await this.loadContacts();
+            } else {
+                this.showToast(data.message || 'Invalid credentials', 'error');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showToast('Login failed. Please try again.', 'error');
         }
     }
 
-    handleLogout() {
+    async handleLogout() {
+        try {
+            // Call logout endpoint if token exists
+            if (this.authToken) {
+                await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${this.authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            }
+        } catch (error) {
+            console.error('Logout error:', error);
+        }
+
+        // Clear local storage and reset state
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
         this.currentUser = null;
+        this.authToken = null;
+        
         document.getElementById('app-container').classList.add('hidden');
         document.getElementById('login-container').classList.remove('hidden');
         document.getElementById('username').value = '';
         document.getElementById('password').value = '';
         this.showToast('Logged out successfully', 'success');
+    }
+
+    checkExistingAuth() {
+        // Check if user is already logged in
+        const storedToken = localStorage.getItem('authToken');
+        const storedUser = localStorage.getItem('currentUser');
+
+        if (storedToken && storedUser) {
+            try {
+                this.authToken = storedToken;
+                this.currentUser = JSON.parse(storedUser);
+                
+                document.getElementById('login-container').classList.add('hidden');
+                document.getElementById('app-container').classList.remove('hidden');
+                
+                this.setupUserInterface();
+                this.loadContacts();
+            } catch (error) {
+                console.error('Error parsing stored user data:', error);
+                // Clear invalid data
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('currentUser');
+            }
+        }
     }
 
     setupUserInterface() {

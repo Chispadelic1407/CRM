@@ -1,4 +1,4 @@
-const { Contact, Advisor, sequelize } = require('../models');
+const { Contact, Advisor, User, sequelize } = require('../models');
 const GeminiService = require('./geminiService');
 const logger = require('../utils/logger');
 
@@ -20,6 +20,9 @@ class DatabaseService {
             
             // Create default advisors if none exist
             await this.createDefaultAdvisors();
+            
+            // Create default users if none exist
+            await this.createDefaultUsers();
             
             return true;
         } catch (error) {
@@ -67,6 +70,46 @@ class DatabaseService {
             }
         } catch (error) {
             logger.error('Error creating default advisors', { error: error.message });
+        }
+    }
+
+    /**
+     * Create default users
+     */
+    async createDefaultUsers() {
+        try {
+            const userCount = await User.count();
+            if (userCount === 0) {
+                const defaultUsers = [
+                    // Admin users
+                    {
+                        username: 'Chispadelic',
+                        password: 'Svernis1',
+                        role: 'admin'
+                    },
+                    {
+                        username: 'Kimbowimbo',
+                        password: 'c0razonK',
+                        role: 'admin'
+                    },
+                    // Advisor users
+                    {
+                        username: 'Rafurioso',
+                        password: 'Miau1234*',
+                        role: 'asesor'
+                    },
+                    {
+                        username: 'Wero',
+                        password: 'Miau1234*',
+                        role: 'asesor'
+                    }
+                ];
+
+                await User.bulkCreate(defaultUsers);
+                logger.info('Default users created successfully');
+            }
+        } catch (error) {
+            logger.error('Error creating default users', { error: error.message });
         }
     }
 

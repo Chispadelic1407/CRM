@@ -1,0 +1,50 @@
+{
+  service: 'crm-twilio',
+  error: '',
+  level: 'error',
+  message: 'Unable to connect to database',
+  timestamp: '2025-06-24 10:47:31'
+}
+{
+  service: 'crm-twilio',
+  error: '',
+  level: 'error',
+  message: 'Failed to initialize database',
+  timestamp: '2025-06-24 10:47:31'
+}
+{
+  service: 'crm-twilio',
+  error: '',
+  ip: '127.0.0.1',
+  level: 'error',
+  message: 'Login error',
+  timestamp: '2025-06-24 10:48:02'
+}
+{
+  service: 'crm-twilio',
+  error: '',
+  level: 'error',
+  message: 'Unable to connect to database',
+  timestamp: '2025-06-24 10:48:54'
+}
+{
+  service: 'crm-twilio',
+  error: '',
+  level: 'error',
+  message: 'Failed to initialize database',
+  timestamp: '2025-06-24 10:48:54'
+}
+{
+  service: 'crm-twilio',
+  error: '',
+  level: 'error',
+  message: 'Unable to connect to database',
+  timestamp: '2025-06-24 10:51:02'
+}
+{
+  service: 'crm-twilio',
+  error: '',
+  level: 'error',
+  message: 'Failed to initialize database',
+  timestamp: '2025-06-24 10:51:02'
+}

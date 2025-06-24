@@ -17,6 +17,7 @@ const spoofCallingRoutes = require('./routes/spoofCalling');
 const aiRoutes = require('./routes/ai');
 const advisorRoutes = require('./routes/advisors');
 const contactRoutes = require('./routes/contacts');
+const { router: authRoutes } = require('./routes/auth');
 
 // Validate environment variables
 const requiredEnvVars = [
@@ -231,6 +232,9 @@ app.post('/make-call', async (req, res) => {
         });
     }
 });
+
+// Mount authentication routes
+app.use('/api/auth', authRoutes);
 
 // Mount spoof calling routes
 app.use('/api/spoof', spoofCallingRoutes);

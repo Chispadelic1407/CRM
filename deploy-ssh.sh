@@ -1,12 +1,12 @@
 #!/bin/bash
 
 # Deployment Configuration
-REMOTE_HOST="access-5018020518.webspace-host.com"
-REMOTE_USER="a951193"
-REMOTE_PASSWORD="Svernis1"
+REMOTE_HOST="8.219.175.183"
+REMOTE_USER="root"
 REMOTE_PORT="22"
 REMOTE_PATH="/crm-twilio"
 LOCAL_PATH="/home/user/workspace"
+SSH_KEY_PATH="/tmp/ssh_key"
 
 echo "🚀 Starting CRM Twilio Deployment..."
 
