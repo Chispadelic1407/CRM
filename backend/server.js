@@ -4,66 +4,121 @@ const express = require('express');
 const cors = require('cors');
 const Twilio = require('twilio');
 
-// Validar que las variables de entorno estén presentes
-if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-    console.error("Error: Las credenciales de Twilio no están configuradas en el archivo .env");
+// Validar que todas las variables de entorno estén presentes
+const requiredEnvVars = [
+    'TWILIO_ACCOUNT_SID',
+    'TWILIO_AUTH_TOKEN', 
+    'TWILIO_PHONE_NUMBER',
+    'AGENT_PHONE_NUMBER'
+];
+
+const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+if (missingVars.length > 0) {
+    console.error(`Error: Las siguientes variables de entorno no están configuradas: ${missingVars.join(', ')}`);
     process.exit(1);
 }
 
 // Inicializar el cliente de Twilio
-const accountSid = process.env.TWILIO_ACCOUNT_SID;
-const authToken = process.env.TWILIO_AUTH_TOKEN;
-const client = new Twilio(accountSid, authToken);
+const client = new Twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 const app = express();
-app.use(cors()); // Permitir peticiones desde el frontend
+app.use(cors());
 app.use(express.json());
+
+// Función para validar número de teléfono
+const isValidPhoneNumber = (phone) => {
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    return phoneRegex.test(phone);
+};
 
 // --- Endpoint para enviar SMS ---
 app.post('/send-sms', async (req, res) => {
     const { to, body } = req.body;
+    
+    // Validación de entrada
     if (!to || !body) {
-        return res.status(400).json({ success: false, message: 'Faltan el destinatario y el cuerpo del mensaje.' });
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Faltan el destinatario y el cuerpo del mensaje.' 
+        });
+    }
+    
+    if (!isValidPhoneNumber(to)) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Número de teléfono inválido.' 
+        });
+    }
+    
+    if (body.length > 1600) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'El mensaje es demasiado largo.' 
+        });
     }
 
     try {
         await client.messages.create({
-            body: body,
+            body: body.trim(),
             from: process.env.TWILIO_PHONE_NUMBER,
             to: to
         });
-        console.log(`SMS enviado a ${to}`);
+        
         res.json({ success: true, message: 'SMS enviado con éxito.' });
     } catch (error) {
-        console.error('Error al enviar SMS:', error);
-        res.status(500).json({ success: false, message: 'Error al enviar SMS.' });
+        console.error('Error al enviar SMS:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al enviar SMS.' 
+        });
     }
 });
 
 // --- Endpoint para realizar llamadas (Click-to-Call) ---
 app.post('/make-call', async (req, res) => {
     const { to } = req.body;
+    
+    // Validación de entrada
     if (!to) {
-        return res.status(400).json({ success: false, message: 'Falta el número del destinatario.' });
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Falta el número del destinatario.' 
+        });
+    }
+    
+    if (!isValidPhoneNumber(to)) {
+        return res.status(400).json({ 
+            success: false, 
+            message: 'Número de teléfono inválido.' 
+        });
     }
 
-    const twiml = new Twilio.twiml.VoiceResponse();
-    twiml.say({ voice: 'alice', language: 'es-MX' }, 'Conectando con el cliente, por favor espere.');
-    twiml.dial(to);
-
     try {
+        const twiml = new Twilio.twiml.VoiceResponse();
+        twiml.say({ 
+            voice: 'alice', 
+            language: 'es-MX' 
+        }, 'Conectando con el cliente, por favor espere.');
+        twiml.dial(to);
+
         await client.calls.create({
             twiml: twiml.toString(),
-            to: process.env.AGENT_PHONE_NUMBER, // Llama al asesor primero
+            to: process.env.AGENT_PHONE_NUMBER,
             from: process.env.TWILIO_PHONE_NUMBER
         });
-        console.log(`Iniciando llamada al asesor para conectar con ${to}`);
-        res.json({ success: true, message: 'Llamada iniciada. Tu teléfono sonará primero.' });
+        
+        res.json({ 
+            success: true, 
+            message: 'Llamada iniciada. Tu teléfono sonará primero.' 
+        });
     } catch (error) {
-        console.error('Error al iniciar la llamada:', error);
-        res.status(500).json({ success: false, message: 'Error al iniciar la llamada.' });
+        console.error('Error al iniciar la llamada:', error.message);
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error al iniciar la llamada.' 
+        });
     }
 });
 
-const PORT = 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`Servidor de Twilio escuchando en el puerto ${PORT}`));

@@ -5,40 +5,619 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CRM con Dashboard de Administrador</title>
     <style>
-        :root { --primary-color: #1a73e8; --secondary-color: #f8f9fa; --font-color: #3c4043; --border-color: #dfe1e5; --danger-color: #d93025; --success-color: #1e8e3e; --warning-color: #f9ab00; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; background-color: #f4f7f9; margin: 0; -webkit-touch-callout: none; }
+        :root { 
+            --primary-color: #1a73e8; 
+            --secondary-color: #f8f9fa; 
+            --font-color: #3c4043; 
+            --border-color: #dfe1e5; 
+            --danger-color: #d93025; 
+            --success-color: #1e8e3e; 
+            --warning-color: #f9ab00; 
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto; 
+            background-color: #f4f7f9; 
+            margin: 0; 
+            -webkit-touch-callout: none; 
+        }
         .hidden { display: none !important; }
-        #app-container, #login-container { user-select: none; -webkit-user-select: none; -moz-user-select: none; -ms-user-select: none; transition: filter 0.2s ease-out; }
+        #app-container, #login-container { 
+            user-select: none; 
+            -webkit-user-select: none; 
+            -moz-user-select: none; 
+            -ms-user-select: none; 
+            transition: filter 0.2s ease-out; 
+        }
         ::selection, ::-moz-selection { background: transparent; }
         .security-blur { filter: blur(8px); pointer-events: none; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.4); display: flex; justify-content: center; align-items: center; z-index: 9990; }
-        .modal-content { background: white; padding: 25px; border-radius: 12px; width: 90%; max-width: 500px; }
-        .modal-actions { margin-top: 20px; display: flex; justify-content: flex-end; }
+        .overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0, 0, 0, 0.4); 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 9990; 
+        }
+        .modal-content { 
+            background: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            width: 90%; 
+            max-width: 500px; 
+        }
+        .modal-actions { 
+            margin-top: 20px; 
+            display: flex; 
+            justify-content: flex-end; 
+        }
         .modal-actions button { margin-left: 10px; }
-        #login-container, #app-container { max-width: 1300px; margin: 20px auto; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 8px 30px rgba(0,0,0,0.08); }
+        #login-container, #app-container { 
+            max-width: 1300px; 
+            margin: 20px auto; 
+            padding: 30px; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08); 
+        }
         #login-container { max-width: 360px; text-align: center; }
         h1, h2, h3 { color: var(--primary-color); }
-        h2 { border-bottom: 2px solid var(--primary-color); padding-bottom: 8px; margin-bottom: 15px; }
-        input, select, textarea { width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid var(--border-color); border-radius: 8px; box-sizing: border-box; }
-        button { padding: 12px 22px; font-size: 16px; border: none; border-radius: 8px; cursor: pointer; background-color: var(--primary-color); color: white; }
-        .module { background-color: var(--secondary-color); padding: 20px; border-radius: 8px; margin-top: 20px; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px; }
-        .stat-card { background: white; padding: 20px; border-radius: 8px; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .stat-value { font-size: 36px; font-weight: bold; color: var(--primary-color); display: block; }
+        h2 { 
+            border-bottom: 2px solid var(--primary-color); 
+            padding-bottom: 8px; 
+            margin-bottom: 15px; 
+        }
+        input, select, textarea { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 15px; 
+            border: 1px solid var(--border-color); 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+        }
+        button { 
+            padding: 12px 22px; 
+            font-size: 16px; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            background-color: var(--primary-color); 
+            color: white; 
+        }
+        button:hover { background-color: #1557b0; }
+        button.secondary { 
+            background-color: var(--secondary-color); 
+            color: var(--font-color); 
+            border: 1px solid var(--border-color); 
+        }
+        .module { 
+            background-color: var(--secondary-color); 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin-top: 20px; 
+        }
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
+            gap: 20px; 
+        }
+        .stat-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            text-align: center; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); 
+        }
+        .stat-value { 
+            font-size: 36px; 
+            font-weight: bold; 
+            color: var(--primary-color); 
+            display: block; 
+        }
         .stat-label { font-size: 14px; color: #5f6368; }
         #status-breakdown { list-style: none; padding: 0; }
-        #status-breakdown li { display: flex; justify-content: space-between; padding: 10px; background: white; margin-bottom: 5px; border-radius: 5px; }
+        #status-breakdown li { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 10px; 
+            background: white; 
+            margin-bottom: 5px; 
+            border-radius: 5px; 
+        }
         #table-container { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 14px; border: 1px solid var(--border-color); text-align: left; white-space: nowrap; }
-        .status-badge { padding: 4px 10px; border-radius: 12px; color: white; font-size: 12px; font-weight: bold; }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+        th, td { 
+            padding: 14px; 
+            border: 1px solid var(--border-color); 
+            text-align: left; 
+            white-space: nowrap; 
+        }
+        th { background-color: var(--secondary-color); }
+        .status-badge { 
+            padding: 4px 10px; 
+            border-radius: 12px; 
+            color: white; 
+            font-size: 12px; 
+            font-weight: bold; 
+        }
         .status-Pendiente { background-color: #808080; }
         .status-Contactado { background-color: var(--success-color); }
         .status-Requiere_Seguimiento { background-color: var(--warning-color); color: #333; }
         .status-No_Interesado { background-color: var(--danger-color); }
+        .action-buttons { display: flex; gap: 5px; }
+        .action-buttons button { 
+            padding: 6px 12px; 
+            font-size: 12px; 
+            min-width: auto; 
+        }
+        .btn-call { background-color: var(--success-color); }
+        .btn-sms { background-color: var(--warning-color); color: #333; }
+        .btn-edit { background-color: var(--primary-color); }
+        .form-row { 
+            display: grid; 
+            grid-template-columns: 1fr 1fr; 
+            gap: 15px; 
+        }
+        .notification { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            padding: 15px 20px; 
+            border-radius: 8px; 
+            color: white; 
+            z-index: 10000; 
+            max-width: 300px; 
+        }
+        .notification.success { background-color: var(--success-color); }
+        .notification.error { background-color: var(--danger-color); }
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px; 
+        }
+        .user-info { 
+            display: flex; 
+            align-items: center; 
+            gap: 15px; 
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
-<!-- ...El contenido completo de index.html que te proporcioné antes va aquí... -->
+    <!-- Pantalla de Login -->
+    <div id="login-container">
+        <h1>🏢 CRM Twilio</h1>
+        <h3>Iniciar Sesión</h3>
+        <form id="login-form">
+            <input type="text" id="username" placeholder="Usuario" required>
+            <input type="password" id="password" placeholder="Contraseña" required>
+            <button type="submit">Ingresar</button>
+        </form>
+    </div>
+
+    <!-- Aplicación Principal -->
+    <div id="app-container" class="hidden">
+        <div class="header">
+            <h1>🏢 CRM Dashboard</h1>
+            <div class="user-info">
+                <span id="user-role"></span>
+                <button id="logout-btn" class="secondary">Cerrar Sesión</button>
+            </div>
+        </div>
+
+        <!-- Dashboard de Administrador -->
+        <div id="admin-dashboard" class="module hidden">
+            <h2>📊 Dashboard de Administrador</h2>
+            <div class="dashboard-grid">
+                <div class="stat-card">
+                    <span class="stat-value" id="total-contacts">0</span>
+                    <div class="stat-label">Total Contactos</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="contacted-today">0</span>
+                    <div class="stat-label">Contactados Hoy</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="pending-contacts">0</span>
+                    <div class="stat-label">Pendientes</div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value" id="conversion-rate">0%</span>
+                    <div class="stat-label">Tasa de Conversión</div>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px;">
+                <h3>Estado de Contactos</h3>
+                <ul id="status-breakdown"></ul>
+            </div>
+        </div>
+
+        <!-- Gestión de Contactos -->
+        <div class="module">
+            <h2>👥 Gestión de Contactos</h2>
+            
+            <!-- Formulario para Agregar/Editar Contacto -->
+            <form id="contact-form">
+                <div class="form-row">
+                    <input type="text" id="contact-name" placeholder="Nombre completo" required>
+                    <input type="tel" id="contact-phone" placeholder="Teléfono (+52...)" required>
+                </div>
+                <div class="form-row">
+                    <input type="email" id="contact-email" placeholder="Email">
+                    <select id="contact-status">
+                        <option value="Pendiente">Pendiente</option>
+                        <option value="Contactado">Contactado</option>
+                        <option value="Requiere_Seguimiento">Requiere Seguimiento</option>
+                        <option value="No_Interesado">No Interesado</option>
+                    </select>
+                </div>
+                <textarea id="contact-notes" placeholder="Notas adicionales" rows="3"></textarea>
+                <button type="submit" id="form-submit-btn">Agregar Contacto</button>
+                <button type="button" id="cancel-edit-btn" class="secondary hidden">Cancelar</button>
+            </form>
+
+            <!-- Lista de Contactos -->
+            <div id="table-container">
+                <table id="contacts-table">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Teléfono</th>
+                            <th>Email</th>
+                            <th>Estado</th>
+                            <th>Notas</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contacts-tbody">
+                        <!-- Los contactos se cargarán aquí dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para SMS -->
+    <div id="sms-modal" class="overlay hidden">
+        <div class="modal-content">
+            <h3>📱 Enviar SMS</h3>
+            <p>Enviando a: <strong id="sms-recipient"></strong></p>
+            <textarea id="sms-message" placeholder="Escribe tu mensaje..." rows="4" maxlength="1600"></textarea>
+            <div class="modal-actions">
+                <button id="cancel-sms" class="secondary">Cancelar</button>
+                <button id="send-sms">Enviar SMS</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuración
+        const API_BASE = 'http://localhost:3001';
+        
+        // Estado de la aplicación
+        let currentUser = null;
+        let contacts = [];
+        let editingContactId = null;
+
+        // Datos de usuarios (en producción esto estaría en una base de datos)
+        const users = {
+            'admin': { password: 'admin123', role: 'Administrador' },
+            'asesor': { password: 'asesor123', role: 'Asesor' }
+        };
+
+        // Datos de ejemplo para contactos
+        const sampleContacts = [
+            {
+                id: 1,
+                name: 'Juan Pérez',
+                phone: '+5215551234567',
+                email: 'juan@email.com',
+                status: 'Pendiente',
+                notes: 'Interesado en el producto premium'
+            },
+            {
+                id: 2,
+                name: 'María García',
+                phone: '+5215559876543',
+                email: 'maria@email.com',
+                status: 'Contactado',
+                notes: 'Llamada realizada, espera propuesta'
+            },
+            {
+                id: 3,
+                name: 'Carlos López',
+                phone: '+5215555555555',
+                email: 'carlos@email.com',
+                status: 'Requiere_Seguimiento',
+                notes: 'Solicita más información'
+            }
+        ];
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cargar contactos de ejemplo si no existen
+            if (!localStorage.getItem('contacts')) {
+                localStorage.setItem('contacts', JSON.stringify(sampleContacts));
+            }
+            loadContacts();
+            setupEventListeners();
+        });
+
+        // Event Listeners
+        function setupEventListeners() {
+            document.getElementById('login-form').addEventListener('submit', handleLogin);
+            document.getElementById('logout-btn').addEventListener('click', handleLogout);
+            document.getElementById('contact-form').addEventListener('submit', handleContactSubmit);
+            document.getElementById('cancel-edit-btn').addEventListener('click', cancelEdit);
+            document.getElementById('cancel-sms').addEventListener('click', closeSmsModal);
+            document.getElementById('send-sms').addEventListener('click', sendSMS);
+        }
+
+        // Autenticación
+        function handleLogin(e) {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (users[username] && users[username].password === password) {
+                currentUser = { username, role: users[username].role };
+                showApp();
+                updateDashboard();
+            } else {
+                showNotification('Usuario o contraseña incorrectos', 'error');
+            }
+        }
+
+        function handleLogout() {
+            currentUser = null;
+            document.getElementById('login-container').classList.remove('hidden');
+            document.getElementById('app-container').classList.add('hidden');
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function showApp() {
+            document.getElementById('login-container').classList.add('hidden');
+            document.getElementById('app-container').classList.remove('hidden');
+            document.getElementById('user-role').textContent = `${currentUser.role}: ${currentUser.username}`;
+            
+            // Mostrar dashboard solo para administradores
+            if (currentUser.role === 'Administrador') {
+                document.getElementById('admin-dashboard').classList.remove('hidden');
+            } else {
+                document.getElementById('admin-dashboard').classList.add('hidden');
+            }
+        }
+
+        // Gestión de contactos
+        function loadContacts() {
+            contacts = JSON.parse(localStorage.getItem('contacts')) || [];
+            renderContacts();
+        }
+
+        function saveContacts() {
+            localStorage.setItem('contacts', JSON.stringify(contacts));
+        }
+
+        function renderContacts() {
+            const tbody = document.getElementById('contacts-tbody');
+            tbody.innerHTML = '';
+
+            contacts.forEach(contact => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${contact.name}</td>
+                    <td>${contact.phone}</td>
+                    <td>${contact.email || '-'}</td>
+                    <td><span class="status-badge status-${contact.status}">${contact.status.replace('_', ' ')}</span></td>
+                    <td>${contact.notes || '-'}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-call" onclick="makeCall('${contact.phone}')">📞</button>
+                            <button class="btn-sms" onclick="openSmsModal('${contact.phone}', '${contact.name}')">💬</button>
+                            <button class="btn-edit" onclick="editContact(${contact.id})">✏️</button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function handleContactSubmit(e) {
+            e.preventDefault();
+            
+            const contactData = {
+                name: document.getElementById('contact-name').value,
+                phone: document.getElementById('contact-phone').value,
+                email: document.getElementById('contact-email').value,
+                status: document.getElementById('contact-status').value,
+                notes: document.getElementById('contact-notes').value
+            };
+
+            if (editingContactId) {
+                // Editar contacto existente
+                const index = contacts.findIndex(c => c.id === editingContactId);
+                contacts[index] = { ...contacts[index], ...contactData };
+                showNotification('Contacto actualizado correctamente', 'success');
+                cancelEdit();
+            } else {
+                // Agregar nuevo contacto
+                const newContact = {
+                    id: Date.now(),
+                    ...contactData
+                };
+                contacts.push(newContact);
+                showNotification('Contacto agregado correctamente', 'success');
+            }
+
+            saveContacts();
+            renderContacts();
+            updateDashboard();
+            document.getElementById('contact-form').reset();
+        }
+
+        function editContact(id) {
+            const contact = contacts.find(c => c.id === id);
+            if (contact) {
+                editingContactId = id;
+                document.getElementById('contact-name').value = contact.name;
+                document.getElementById('contact-phone').value = contact.phone;
+                document.getElementById('contact-email').value = contact.email || '';
+                document.getElementById('contact-status').value = contact.status;
+                document.getElementById('contact-notes').value = contact.notes || '';
+                
+                document.getElementById('form-submit-btn').textContent = 'Actualizar Contacto';
+                document.getElementById('cancel-edit-btn').classList.remove('hidden');
+            }
+        }
+
+        function cancelEdit() {
+            editingContactId = null;
+            document.getElementById('contact-form').reset();
+            document.getElementById('form-submit-btn').textContent = 'Agregar Contacto';
+            document.getElementById('cancel-edit-btn').classList.add('hidden');
+        }
+
+        // Funciones de Twilio
+        async function makeCall(phoneNumber) {
+            try {
+                const response = await fetch(`${API_BASE}/make-call`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: phoneNumber })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al realizar la llamada', 'error');
+            }
+        }
+
+        function openSmsModal(phoneNumber, contactName) {
+            document.getElementById('sms-recipient').textContent = `${contactName} (${phoneNumber})`;
+            document.getElementById('sms-modal').dataset.phone = phoneNumber;
+            document.getElementById('sms-modal').classList.remove('hidden');
+            document.getElementById('sms-message').focus();
+        }
+
+        function closeSmsModal() {
+            document.getElementById('sms-modal').classList.add('hidden');
+            document.getElementById('sms-message').value = '';
+        }
+
+        async function sendSMS() {
+            const phoneNumber = document.getElementById('sms-modal').dataset.phone;
+            const message = document.getElementById('sms-message').value.trim();
+            
+            if (!message) {
+                showNotification('Por favor escribe un mensaje', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/send-sms`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ to: phoneNumber, body: message })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    showNotification(result.message, 'success');
+                    closeSmsModal();
+                } else {
+                    showNotification(result.message, 'error');
+                }
+            } catch (error) {
+                showNotification('Error al enviar SMS', 'error');
+            }
+        }
+
+        // Dashboard
+        function updateDashboard() {
+            if (currentUser?.role !== 'Administrador') return;
+
+            const totalContacts = contacts.length;
+            const contactedToday = contacts.filter(c => c.status === 'Contactado').length;
+            const pendingContacts = contacts.filter(c => c.status === 'Pendiente').length;
+            const conversionRate = totalContacts > 0 ? Math.round((contactedToday / totalContacts) * 100) : 0;
+
+            document.getElementById('total-contacts').textContent = totalContacts;
+            document.getElementById('contacted-today').textContent = contactedToday;
+            document.getElementById('pending-contacts').textContent = pendingContacts;
+            document.getElementById('conversion-rate').textContent = `${conversionRate}%`;
+
+            // Breakdown por estado
+            const statusCounts = {};
+            contacts.forEach(contact => {
+                statusCounts[contact.status] = (statusCounts[contact.status] || 0) + 1;
+            });
+
+            const statusBreakdown = document.getElementById('status-breakdown');
+            statusBreakdown.innerHTML = '';
+            Object.entries(statusCounts).forEach(([status, count]) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${status.replace('_', ' ')}</span>
+                    <span>${count}</span>
+                `;
+                statusBreakdown.appendChild(li);
+            });
+        }
+
+        // Utilidades
+        function showNotification(message, type) {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+
+        // Seguridad básica
+        document.addEventListener('keydown', function(e) {
+            // Bloquear F12, Ctrl+Shift+I, Ctrl+U
+            if (e.key === 'F12' || 
+                (e.ctrlKey && e.shiftKey && e.key === 'I') || 
+                (e.ctrlKey && e.key === 'u')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Detectar herramientas de desarrollador
+        let devtools = {open: false, orientation: null};
+        setInterval(() => {
+            if (window.outerHeight - window.innerHeight > 200 || window.outerWidth - window.innerWidth > 200) {
+                if (!devtools.open) {
+                    devtools.open = true;
+                    document.getElementById('app-container').classList.add('security-blur');
+                    document.getElementById('login-container').classList.add('security-blur');
+                }
+            } else {
+                if (devtools.open) {
+                    devtools.open = false;
+                    document.getElementById('app-container').classList.remove('security-blur');
+                    document.getElementById('login-container').classList.remove('security-blur');
+                }
+            }
+        }, 500);
+    </script>
 </body>
 </html>
