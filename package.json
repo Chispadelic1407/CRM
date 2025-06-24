@@ -7,7 +7,11 @@
     "start": "node backend/server.js",
     "dev": "nodemon backend/server.js",
     "deploy": "./deploy-production.sh",
-    "test": "echo 'Tests not implemented yet'"
+    "test": "echo 'Tests not implemented yet'",
+    "postinstall": "cd backend && npm install",
+    "eb-deploy": "eb deploy",
+    "eb-create": "eb create crm-production --platform 'Node.js 18 running on 64bit Amazon Linux 2'",
+    "health-check": "curl -f http://localhost:8080/health || exit 1"
   },
   "keywords": [
     "crm",

@@ -331,7 +331,9 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
     logger.info(`Server started successfully`, {
         port: PORT,
         environment: process.env.NODE_ENV || 'development',
-        pid: process.pid
+        pid: process.pid,
+        nodeVersion: process.version,
+        platform: process.platform
     });
     
     // Initialize database
@@ -340,10 +342,19 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
         logger.info('Database initialized successfully');
     } catch (error) {
         logger.error('Failed to initialize database', { error: error.message });
+        // In production, don't exit if database fails initially
+        if (process.env.NODE_ENV !== 'production') {
+            process.exit(1);
+        }
     }
     
     // Warm up cache
-    await warmCache();
+    try {
+        await warmCache();
+        logger.info('Cache warmed up successfully');
+    } catch (error) {
+        logger.warn('Failed to warm up cache', { error: error.message });
+    }
     
     logger.info('Application ready to accept connections');
 });
