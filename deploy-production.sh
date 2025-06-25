@@ -79,7 +79,8 @@ chmod 755 ${REMOTE_PATH}/backend/server.js
 quit
 EOF
 
-# Execute SFTP upload
+# Execute SFTP upload with password prompt
+echo "Please enter the password for ${SSH_USER}@${SSH_HOST} when prompted:"
 sftp -P ${SSH_PORT} -b sftp_commands.txt ${SSH_USER}@${SSH_HOST}
 
 # Clean up
@@ -89,6 +90,7 @@ print_status "Files uploaded successfully!"
 
 # Install dependencies and start application via SSH
 print_status "Installing dependencies and starting application..."
+echo "Please enter the password for ${SSH_USER}@${SSH_HOST} when prompted for SSH connection:"
 
 ssh -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} << 'ENDSSH'
 cd /home/a951193/crm-twilio
