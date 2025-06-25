@@ -19,3 +19,4 @@ build/
 # Database files
 *.sqlite
 *.db
+.env.local
