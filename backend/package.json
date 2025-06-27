@@ -2,13 +2,13 @@
   "name": "crm-twilio-api",
   "version": "3.0.0",
   "description": "Advanced CRM system with Twilio integration and spoof calling capabilities",
-  "main": "backend/server.js",
+  "main": "server.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev": "nodemon backend/server.js",
-    "deploy": "./deploy-production.sh",
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "deploy": "cd .. && ./deploy-production.sh",
     "test": "jest --detectOpenHandles",
-    "lint": "eslint backend/**/*.js",
+    "lint": "eslint ./**/*.js",
     "format": "prettier --write backend/**/*.js"
   },
   "keywords": [
