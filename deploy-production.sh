@@ -23,11 +23,12 @@ SSH_PORT="22" # Puerto SSH, rara vez cambia
 LOCAL_PATH="." # Directorio local del proyecto
 APP_PORT="3001" # Puerto en el que corre la app Node.js en el servidor (informativo)
 
-# Comando para iniciar la aplicación en el servidor (backend/server.js es el entry point)
-APP_START_COMMAND="node backend/server.js"
+# Comando para iniciar la aplicación en el servidor (ejecutado desde la carpeta backend)
+APP_START_COMMAND="node server.js"
 # Patrón para encontrar el proceso de la aplicación y detenerlo/verificarlo
 # Asegúrate que este patrón sea lo más específico posible para tu aplicación
-APP_PROCESS_NAME="node.*backend/server.js" # Regex para pgrep/pkill
+# Ahora se busca 'node server.js' porque el CWD será la carpeta 'backend'
+APP_PROCESS_NAME="node.*server.js" # Regex para pgrep/pkill
 
 #--- Argumentos de Línea de Comandos
 SSH_USER="${1:-$DEFAULT_SSH_USER}"
@@ -82,10 +83,11 @@ rsync -av --exclude 'node_modules/' --exclude '.git/' --exclude 'dist/' "${LOCAL
 
 
 # Copiar archivos de configuración importantes y otros archivos raíz
-cp "${LOCAL_PATH}/package.json" "${LOCAL_PATH}/dist/"
-cp "${LOCAL_PATH}/package-lock.json" "${LOCAL_PATH}/dist/" # Muy importante para 'npm ci'
+cp "${LOCAL_PATH}/backend/package.json" "${LOCAL_PATH}/dist/backend/"
+cp "${LOCAL_PATH}/backend/package-lock.json" "${LOCAL_PATH}/dist/backend/" # Muy importante para 'npm ci'
 
 # Renombrar .env.production a .env para el servidor
+# Este .env debe estar en la raíz de dist, ya que server.js probablemente lo busca en ../.env desde backend/server.js
 cp "${LOCAL_PATH}/.env.production" "${LOCAL_PATH}/dist/.env"
 print_status "Archivo .env.production copiado como .env en el paquete."
 
@@ -116,38 +118,47 @@ ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash << ENDSSH
 set -e # Salir si un comando falla dentro del script SSH
 
 echo "[REMOTE] Cambiando al directorio de la aplicación: ${REMOTE_PATH}"
-cd "${REMOTE_PATH}"
+cd "${REMOTE_PATH}" # Todavía vamos a la raíz primero para crear logs
 
-echo "[REMOTE] Asegurando que el directorio de logs exista..."
-mkdir -p logs # Asegurar que exista el directorio de logs
+echo "[REMOTE] Asegurando que el directorio de logs exista en la raíz..."
+mkdir -p logs # Asegurar que exista el directorio de logs en la raíz del proyecto
 
-echo "[REMOTE] Instalando dependencias de Node.js (npm ci --omit=dev)..."
+echo "[REMOTE] Cambiando al directorio del backend: ${REMOTE_PATH}/backend"
+cd "${REMOTE_PATH}/backend"
+
+echo "[REMOTE] Instalando dependencias de Node.js (npm ci --omit=dev) en ${REMOTE_PATH}/backend ..."
 # 'npm ci' es mejor para producción: instala desde package-lock.json y es más rápido.
 # '--omit=dev' (o NODE_ENV=production npm ci) para no instalar devDependencies.
-NODE_ENV=production npm ci --omit=dev --legacy-peer-deps # Añadido --legacy-peer-deps por si hay conflictos
+# El .env se copia a la raíz de 'dist', por lo que server.js (en backend) lo buscará en '../.env'
+NODE_ENV=production npm ci --omit=dev --legacy-peer-deps
 
-echo "[REMOTE] Deteniendo cualquier proceso existente de la aplicación..."
+echo "[REMOTE] Deteniendo cualquier proceso existente de la aplicación (buscando 'node.*server.js' en 'backend')..."
 # Usar pkill con el patrón definido. '|| true' para no fallar si no hay procesos corriendo.
-pkill -f "${APP_PROCESS_NAME}" || true
+# El patrón APP_PROCESS_NAME necesita ser ajustado si el CWD del proceso cambia.
+# Si ahora corremos desde backend/, el patrón podría ser más simple o necesitar cd para pgrep/pkill
+# Por ahora, asumimos que el patrón original sigue siendo válido o se ajustará.
+# Si APP_START_COMMAND ahora es 'node server.js' desde backend/, entonces APP_PROCESS_NAME debe ser "node.*server.js" y no "node.*backend/server.js"
+# Vamos a ajustar APP_PROCESS_NAME y APP_START_COMMAND globalmente en el script.
+pkill -f "node.*server.js" || true # Asumiendo que el proceso correrá como "node server.js" desde la carpeta backend
 echo "[REMOTE] Procesos anteriores detenidos (si existían)."
 
-echo "[REMOTE] Iniciando la aplicación en segundo plano con nohup..."
+echo "[REMOTE] Iniciando la aplicación en segundo plano con nohup desde ${REMOTE_PATH}/backend ..."
 # nohup para que siga corriendo si se cierra la sesión SSH
-# Redirigir stdout y stderr a un archivo de log. '&' para segundo plano.
-nohup ${APP_START_COMMAND} > "${REMOTE_PATH}/logs/app.log" 2>&1 &
+# Redirigir stdout y stderr a un archivo de log en la raíz del proyecto. '&' para segundo plano.
+nohup node server.js > "${REMOTE_PATH}/logs/app.log" 2>&1 &
 
 echo "[REMOTE] Aplicación iniciada. Verificando estado en 5 segundos..."
 sleep 5
 
 # Verificar si la aplicación está corriendo
 # Usar pgrep con el patrón definido
-if pgrep -f "${APP_PROCESS_NAME}" > /dev/null; then
+if pgrep -f "node.*server.js" > /dev/null; then # Ajustado para el nuevo patrón de proceso
     echo -e "${GREEN}[REMOTE] ✅ ¡Aplicación iniciada correctamente!${NC}"
-    echo "[REMOTE] PID del proceso: \$(pgrep -f \"${APP_PROCESS_NAME}\")"
+    echo "[REMOTE] PID del proceso: \$(pgrep -f "node.*server.js")"
     # echo "[REMOTE] 🌐 URL de la aplicación (aproximada): http://<tu_dominio_o_IP>:${APP_PORT}"
 else
     echo -e "${RED}[REMOTE] ❌ Fallo al iniciar la aplicación.${NC} Revisa los logs:"
-    echo "[REMOTE] --- Últimas 20 líneas de logs/app.log ---"
+    echo "[REMOTE] --- Últimas 20 líneas de ${REMOTE_PATH}/logs/app.log ---"
     tail -20 "${REMOTE_PATH}/logs/app.log"
     echo "[REMOTE] --- Fin de logs ---"
     exit 1 # Salir con error para que el script principal también falle
