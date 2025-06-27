@@ -1,7 +1,0 @@
-mkdir /home/a951193/crm-twilio
-mkdir /home/a951193/crm-twilio/backend
-mkdir /home/a951193/crm-twilio/frontend
-mkdir /home/a951193/crm-twilio/logs
-put -r dist/* /home/a951193/crm-twilio/
-chmod 755 /home/a951193/crm-twilio/backend/server.js
-quit
