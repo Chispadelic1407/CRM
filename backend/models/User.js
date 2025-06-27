@@ -2,6 +2,7 @@ const { DataTypes } = require('sequelize');
 const bcrypt = require('bcrypt');
 
 module.exports = (sequelize) => {
+    const saltRounds = parseInt(process.env.BCRYPT_SALT_ROUNDS, 10) || 12;
     const User = sequelize.define('User', {
         id: {
             type: DataTypes.INTEGER,
@@ -9,71 +10,68 @@ module.exports = (sequelize) => {
             autoIncrement: true
         },
         username: {
-            type: DataTypes.STRING,
+            type: DataTypes.STRING(50),
             allowNull: false,
             unique: true,
-            validate: {
-                notEmpty: true,
-                len: [3, 50]
-            }
+            validate: { len: [3, 50] }
         },
         password: {
             type: DataTypes.STRING,
             allowNull: false,
             validate: {
-                notEmpty: true,
-                len: [6, 255]
+                isStrongPassword(value) {
+                    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/.test(value)) {
+                        throw new Error('La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número.');
+                    }
+                }
             }
         },
         role: {
             type: DataTypes.ENUM('admin', 'asesor'),
-            allowNull: false,
             defaultValue: 'asesor'
+        },
+        advisorId: { // Enlace opcional a un perfil de asesor
+            type: DataTypes.INTEGER,
+            allowNull: true,
+            unique: true,
+            references: { model: 'Advisors', key: 'id' }
         },
         isActive: {
             type: DataTypes.BOOLEAN,
             defaultValue: true
-        },
-        lastLogin: {
-            type: DataTypes.DATE,
-            allowNull: true
         }
+        // otros campos de seguridad
     }, {
         timestamps: true,
+        tableName: 'Users',
         hooks: {
+            beforeValidate: (user) => {
+                if (user.username) user.username = user.username.toLowerCase();
+            },
             beforeCreate: async (user) => {
-                if (user.password) {
-                    user.password = await bcrypt.hash(user.password, 12);
-                }
+                user.password = await bcrypt.hash(user.password, saltRounds);
             },
             beforeUpdate: async (user) => {
                 if (user.changed('password')) {
-                    user.password = await bcrypt.hash(user.password, 12);
+                    user.password = await bcrypt.hash(user.password, saltRounds);
                 }
             }
-        },
-        indexes: [
-            {
-                fields: ['username']
-            },
-            {
-                fields: ['role']
-            },
-            {
-                fields: ['isActive']
-            }
-        ]
+        }
     });
 
-    // Instance method to check password
-    User.prototype.checkPassword = async function(password) {
-        return await bcrypt.compare(password, this.password);
+    User.associate = (models) => {
+        User.belongsTo(models.Advisor, { foreignKey: 'advisorId', as: 'advisorProfile' });
     };
 
-    // Class method to find user by username
+    User.prototype.checkPassword = async function (password) {
+        return bcrypt.compare(password, this.password);
+    };
+
+    // Class method to find user by username (ajustado para incluir el perfil del asesor si existe)
     User.findByUsername = async function(username) {
         return await this.findOne({
-            where: { username: username, isActive: true }
+            where: { username: username.toLowerCase(), isActive: true },
+            include: [{ model: sequelize.models.Advisor, as: 'advisorProfile', required: false }]
         });
     };
 

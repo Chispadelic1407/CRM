@@ -1,441 +1,314 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { parsePhoneNumber, isValidPhoneNumber } = require('libphonenumber-js');
-const validator = require('validator');
 const logger = require('../utils/logger');
+const { isValidPhoneNumber } = require('libphonenumber-js'); // Corregido: quitado parsePhoneNumber que no se usa aquí directamente
+const validator = require('validator');
+
+const SCORING_WEIGHTS = {
+    VALID_PHONE: 30,
+    VALID_EMAIL: 20,
+    COMPLETE_NAME: 20,
+    IS_COMPLETE: 20, // Asumo que esto es para la completitud general de campos requeridos
+    OPTIONAL_FIELDS_BONUS: 10, // Bonus por campos opcionales llenos
+    AI_SUSPICION_PENALTY: -20 // Penalización si IA lo marca como sospechoso
+    // Podrías añadir más pesos aquí (ej. antiguedad del contacto, fuente, etc.)
+};
 
 class GeminiService {
     constructor() {
         this.apiKey = process.env.GEMINI_API_KEY;
         if (!this.apiKey) {
-            logger.warn('Gemini API key not found, running in demo mode');
+            logger.warn('Clave de API de Gemini no encontrada. El servicio de IA se ejecutará en modo demo.');
             this.demoMode = true;
+            // No instanciamos genAI ni model si no hay API Key, para evitar errores.
         } else {
-            this.genAI = new GoogleGenerativeAI(this.apiKey);
-            this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
-            this.demoMode = false;
-            logger.info('Gemini AI service initialized successfully');
+            try {
+                this.genAI = new GoogleGenerativeAI(this.apiKey);
+                this.model = this.genAI.getGenerativeModel({ model: "gemini-pro" });
+                this.demoMode = false;
+                logger.info('Servicio Gemini AI inicializado correctamente.');
+            } catch (error) {
+                logger.error('Error al inicializar Gemini AI. Se ejecutará en modo demo.', { error: error.message });
+                this.demoMode = true;
+            }
         }
     }
 
     /**
-     * Analyze contact data quality and detect suspicious entries
+     * Valida si un nombre parece sospechoso basado en patrones.
+     * @param {string} name - El nombre a validar.
+     * @returns {boolean} - True si el nombre es sospechoso, false en caso contrario.
+     */
+    isSuspiciousName(name) {
+        if (!name || typeof name !== 'string') return false; // Manejo de entrada inválida
+        const suspiciousPatterns = [
+            /^test/i,        // Empieza con "test"
+            /^demo/i,        // Empieza con "demo"
+            /^fake/i,        // Empieza con "fake"
+            /^\d+$/,         // Solo números
+            /(.)\1{2,}/,     // Tres o más caracteres idénticos repetidos consecutivamente (e.g., "aaa", "XXX")
+            /asdf/i,         // Patrones comunes de teclado
+            /qwerty/i,
+            /^.{1,2}$/i,     // Nombres muy cortos (1 o 2 caracteres) podrían ser sospechosos en algunos contextos
+            /^[a-z]+$/,      // Solo minúsculas (podría ser, dependiendo del caso de uso)
+            /^[A-Z]+$/       // Solo mayúsculas (podría ser)
+        ];
+        return suspiciousPatterns.some(pattern => pattern.test(name.trim()));
+    }
+
+    /**
+     * Analiza la calidad de un contacto individual.
+     * @param {object} contact - El objeto de contacto con propiedades como phone, email, name.
+     * @returns {Promise<object>} - Un objeto con qualityScore, issues, y recommendations.
      */
     async analyzeContact(contact) {
-        try {
-            const analysis = {
-                qualityScore: 0,
-                isValidPhone: false,
-                isComplete: false,
-                isSuspicious: false,
-                issues: [],
-                recommendations: []
-            };
+        const analysis = {
+            qualityScore: 0,
+            issues: [],
+            recommendations: [],
+            isSuspiciousByPattern: false,
+            isSuspiciousByAI: false,
+            aiAnalysisDetails: null
+        };
 
-            // Phone number validation
-            analysis.isValidPhone = this.validatePhoneNumber(contact.phone);
-            if (!analysis.isValidPhone) {
-                analysis.issues.push('Invalid phone number format');
-                analysis.recommendations.push('Verify and correct phone number');
-            } else {
-                analysis.qualityScore += 30;
-            }
-
-            // Email validation
-            if (contact.email) {
-                if (validator.isEmail(contact.email)) {
-                    analysis.qualityScore += 20;
-                } else {
-                    analysis.issues.push('Invalid email format');
-                    analysis.recommendations.push('Verify and correct email address');
-                }
-            }
-
-            // Name validation
-            if (contact.name && contact.name.length >= 2) {
-                analysis.qualityScore += 20;
-                
-                // Check for suspicious patterns in name
-                if (this.isSuspiciousName(contact.name)) {
-                    analysis.isSuspicious = true;
-                    analysis.issues.push('Suspicious name pattern detected');
-                }
-            } else {
-                analysis.issues.push('Name too short or missing');
-                analysis.recommendations.push('Provide complete name');
-            }
-
-            // Completeness check
-            const requiredFields = ['name', 'phone'];
-            const optionalFields = ['email'];
-            const completedRequired = requiredFields.filter(field => contact[field] && contact[field].trim()).length;
-            const completedOptional = optionalFields.filter(field => contact[field] && contact[field].trim()).length;
-            
-            analysis.isComplete = completedRequired === requiredFields.length;
-            if (analysis.isComplete) {
-                analysis.qualityScore += 20;
-            }
-
-            // Bonus for optional fields
-            analysis.qualityScore += (completedOptional / optionalFields.length) * 10;
-
-            // AI-powered analysis (if not in demo mode)
-            if (!this.demoMode) {
-                const aiAnalysis = await this.performAIAnalysis(contact);
-                analysis.aiInsights = aiAnalysis;
-                
-                // Adjust score based on AI insights
-                if (aiAnalysis.suspiciousIndicators > 2) {
-                    analysis.isSuspicious = true;
-                    analysis.qualityScore -= 20;
-                }
-            }
-
-            // Ensure score is within bounds
-            analysis.qualityScore = Math.max(0, Math.min(100, analysis.qualityScore));
-
+        if (!contact) {
+            analysis.issues.push('Objeto de contacto vacío o nulo.');
             return analysis;
-        } catch (error) {
-            logger.error('Error analyzing contact', { error: error.message, contact: contact.id });
-            return {
-                qualityScore: 0,
-                isValidPhone: false,
-                isComplete: false,
-                isSuspicious: true,
-                issues: ['Analysis failed'],
-                recommendations: ['Manual review required']
-            };
-        }
-    }
-
-    /**
-     * Perform AI-powered analysis using Gemini
-     */
-    async performAIAnalysis(contact) {
-        if (this.demoMode) {
-            return {
-                suspiciousIndicators: Math.floor(Math.random() * 3),
-                confidence: 0.8,
-                insights: 'Demo mode - no actual AI analysis performed'
-            };
         }
 
-        try {
-            const prompt = `
-Analyze this contact data for quality and authenticity:
-Name: ${contact.name}
-Phone: ${contact.phone}
-Email: ${contact.email || 'Not provided'}
-Notes: ${contact.notes || 'None'}
-
-Please evaluate:
-1. Does this appear to be a real person?
-2. Are there any red flags or suspicious patterns?
-3. What is the likelihood this is a fake or test contact?
-4. Any data quality issues?
-
-Respond in JSON format with:
-{
-    "suspiciousIndicators": number (0-5),
-    "confidence": number (0-1),
-    "insights": "brief explanation",
-    "redFlags": ["list", "of", "issues"],
-    "suggestions": ["list", "of", "improvements"]
-}
-            `;
-
-            const result = await this.model.generateContent(prompt);
-            const response = await result.response;
-            const text = response.text();
-            
-            // Parse JSON response
-            const jsonMatch = text.match(/\{[\s\S]*\}/);
-            if (jsonMatch) {
-                return JSON.parse(jsonMatch[0]);
-            }
-            
-            return {
-                suspiciousIndicators: 0,
-                confidence: 0.5,
-                insights: 'Could not parse AI response',
-                redFlags: [],
-                suggestions: []
-            };
-        } catch (error) {
-            logger.error('Error in AI analysis', { error: error.message });
-            return {
-                suspiciousIndicators: 0,
-                confidence: 0,
-                insights: 'AI analysis failed',
-                redFlags: ['Analysis error'],
-                suggestions: ['Manual review recommended']
-            };
+        // Validar número de teléfono
+        // Usar isValidPhoneNumber de libphonenumber-js, asumiendo que 'contact.phone' ya está en un formato que la librería pueda entender (e.g., E.164 o nacional con código de país si es necesario)
+        // La normalización a E.164 debería ocurrir antes de llamar a este servicio (ej. en el hook del modelo Contact)
+        if (contact.phone && isValidPhoneNumber(contact.phone)) { // Asumimos que el hook del modelo ya normalizó y validó inicialmente. Aquí re-validamos.
+            analysis.qualityScore += SCORING_WEIGHTS.VALID_PHONE;
+        } else {
+            analysis.issues.push(`Número de teléfono inválido o ausente: ${contact.phone || 'N/A'}`);
+            analysis.recommendations.push('Verificar y corregir el número de teléfono. Asegurar formato internacional si es posible.');
         }
-    }
 
-    /**
-     * Analyze entire contact database and suggest cleanup
-     */
-    async analyzeDatabaseHealth(contacts) {
-        try {
-            const analysis = {
-                totalContacts: contacts.length,
-                validContacts: 0,
-                invalidContacts: 0,
-                suspiciousContacts: 0,
-                incompleteContacts: 0,
-                duplicates: [],
-                qualityDistribution: {
-                    excellent: 0, // 80-100
-                    good: 0,      // 60-79
-                    fair: 0,      // 40-59
-                    poor: 0       // 0-39
-                },
-                recommendations: []
-            };
+        // Validar email
+        if (contact.email && validator.isEmail(contact.email)) {
+            analysis.qualityScore += SCORING_WEIGHTS.VALID_EMAIL;
+        } else if (contact.email) { // Si hay email pero no es válido
+            analysis.issues.push(`Formato de email inválido: ${contact.email}`);
+            analysis.recommendations.push('Corregir el formato del email o eliminarlo si es incorrecto.');
+        } else {
+            // No tener email no siempre es un "issue" crítico, pero podría no sumar puntos.
+            // analysis.issues.push('Email ausente');
+        }
 
-            // Find duplicates
-            analysis.duplicates = this.findDuplicates(contacts);
+        // Validar nombre completo
+        if (contact.name && contact.name.trim().length >= 3 && contact.name.trim().includes(' ')) { // Un nombre completo usualmente tiene un espacio
+            analysis.qualityScore += SCORING_WEIGHTS.COMPLETE_NAME;
+        } else if (contact.name && contact.name.trim().length >= 3) {
+            analysis.qualityScore += SCORING_WEIGHTS.COMPLETE_NAME / 2; // Medio puntaje si no parece tener apellido
+            analysis.issues.push(`Nombre parece incompleto o muy corto: ${contact.name}`);
+            analysis.recommendations.push('Asegurar que el nombre completo (nombre y apellido) esté registrado.');
+        } else {
+            analysis.issues.push(`Nombre ausente o demasiado corto: ${contact.name || 'N/A'}`);
+            analysis.recommendations.push('Registrar el nombre completo del contacto.');
+        }
 
-            // Analyze each contact
-            for (const contact of contacts) {
-                const contactAnalysis = await this.analyzeContact(contact);
+        // Chequeo de completitud general (ej. nombre y teléfono son requeridos)
+        if (contact.name && contact.name.trim().length > 0 && contact.phone && isValidPhoneNumber(contact.phone)) {
+            analysis.qualityScore += SCORING_WEIGHTS.IS_COMPLETE;
+        } else {
+            analysis.issues.push('Información básica incompleta (nombre y/o teléfono).');
+            analysis.recommendations.push('Completar todos los campos requeridos del contacto.');
+        }
+
+        // Bonus por campos opcionales (ejemplo: si 'address' o 'company' estuvieran definidos en SCORING_WEIGHTS)
+        // if (contact.address) analysis.qualityScore += SCORING_WEIGHTS.OPTIONAL_FIELDS_BONUS;
+
+        // Detección de nombre sospechoso por patrones
+        if (contact.name && this.isSuspiciousName(contact.name)) {
+            analysis.issues.push(`El nombre "${contact.name}" parece sospechoso según patrones.`);
+            analysis.qualityScore += SCORING_WEIGHTS.AI_SUSPICION_PENALTY / 2; // Penalización parcial por patrones
+            analysis.isSuspiciousByPattern = true;
+            analysis.recommendations.push('Revisar la autenticidad del nombre del contacto.');
+        }
+
+        // Análisis con IA de Gemini (si no está en modo demo y hay API key)
+        if (!this.demoMode && this.model) {
+            try {
+                const prompt = this.constructPromptForContactAnalysis(contact);
+                const result = await this.model.generateContent(prompt);
+                const responseText = result.response.text();
                 
-                if (contactAnalysis.isValidPhone && contactAnalysis.isComplete) {
-                    analysis.validContacts++;
-                } else {
-                    analysis.invalidContacts++;
+                // Intentar parsear la respuesta JSON de la IA
+                let aiData = null;
+                try {
+                    // Extraer el JSON del texto, incluso si está rodeado de ```json ... ```
+                    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```|({[\s\S]*})/);
+                    if (jsonMatch && (jsonMatch[1] || jsonMatch[2])) {
+                        aiData = JSON.parse(jsonMatch[1] || jsonMatch[2]);
+                        analysis.aiAnalysisDetails = aiData;
+                        logger.info('Análisis de IA recibido para contacto:', { contactId: contact.id, aiData });
+
+                        if (aiData.is_suspicious || (aiData.suspicion_score && aiData.suspicion_score > 0.7)) {
+                            analysis.isSuspiciousByAI = true;
+                            analysis.issues.push(`IA marcó el contacto como sospechoso. Razón: ${aiData.suspicion_reason || 'Ver detalles de IA.'}`);
+                            analysis.qualityScore += SCORING_WEIGHTS.AI_SUSPICION_PENALTY;
+                            analysis.recommendations.push('El contacto ha sido marcado como potencialmente problemático por la IA. Se recomienda revisión manual.');
+                        }
+                        if (aiData.quality_issues && aiData.quality_issues.length > 0) {
+                            analysis.issues.push(`IA identificó problemas de calidad: ${aiData.quality_issues.join(', ')}`);
+                        }
+                         if (aiData.recommendations && aiData.recommendations.length > 0) {
+                            analysis.recommendations.push(`Sugerencias de IA: ${aiData.recommendations.join(', ')}`);
+                        }
+                    } else {
+                        logger.warn('No se pudo extraer JSON de la respuesta de IA para contacto:', { contactId: contact.id, responseText });
+                        analysis.issues.push('Respuesta de IA no pudo ser parseada como JSON.');
+                    }
+                } catch (parseError) {
+                    logger.error('Error parseando JSON de la respuesta de IA para contacto:', { contactId: contact.id, error: parseError.message, responseText });
+                    analysis.issues.push(`Error procesando respuesta de IA: ${parseError.message}`);
                 }
 
-                if (contactAnalysis.isSuspicious) {
-                    analysis.suspiciousContacts++;
-                }
-
-                if (!contactAnalysis.isComplete) {
-                    analysis.incompleteContacts++;
-                }
-
-                // Quality distribution
-                const score = contactAnalysis.qualityScore;
-                if (score >= 80) analysis.qualityDistribution.excellent++;
-                else if (score >= 60) analysis.qualityDistribution.good++;
-                else if (score >= 40) analysis.qualityDistribution.fair++;
-                else analysis.qualityDistribution.poor++;
+            } catch (aiError) {
+                logger.error('Error durante la llamada a la API de Gemini para análisis de contacto:', { contactId: contact.id, error: aiError.message });
+                analysis.issues.push(`Fallo en el análisis de IA: ${aiError.message}`);
+                // No penalizar si la IA falla, solo loguear.
             }
-
-            // Generate recommendations
-            if (analysis.duplicates.length > 0) {
-                analysis.recommendations.push(`Remove ${analysis.duplicates.length} duplicate contacts`);
+        } else if (this.demoMode) {
+            analysis.issues.push('Servicio de IA en modo demo. No se realizó análisis con Gemini.');
+            // Simular una posible respuesta de IA en modo demo si es útil para pruebas
+            if (contact.name && contact.name.toLowerCase().includes("demo")) {
+                analysis.isSuspiciousByAI = true; // Simulación
+                analysis.issues.push('IA (demo) marcó el contacto como sospechoso.');
+                analysis.qualityScore += SCORING_WEIGHTS.AI_SUSPICION_PENALTY;
             }
-            if (analysis.suspiciousContacts > 0) {
-                analysis.recommendations.push(`Review ${analysis.suspiciousContacts} suspicious contacts`);
-            }
-            if (analysis.incompleteContacts > 0) {
-                analysis.recommendations.push(`Complete data for ${analysis.incompleteContacts} contacts`);
-            }
-            if (analysis.qualityDistribution.poor > 0) {
-                analysis.recommendations.push(`Improve data quality for ${analysis.qualityDistribution.poor} poor-quality contacts`);
-            }
-
-            return analysis;
-        } catch (error) {
-            logger.error('Error analyzing database health', { error: error.message });
-            throw error;
         }
+
+
+        // Asegurar que el qualityScore esté entre 0 y 100
+        analysis.qualityScore = Math.max(0, Math.min(100, Math.round(analysis.qualityScore)));
+
+        logger.info(`Análisis de contacto finalizado para: ${contact.name || contact.id}`, { qualityScore: analysis.qualityScore, issuesCount: analysis.issues.length });
+        return analysis;
     }
 
     /**
-     * Suggest optimal distribution of contacts among advisors
+     * Construye el prompt para el análisis de calidad de contacto con Gemini.
+     * @param {object} contact - El objeto de contacto.
+     * @returns {string} - El prompt formateado.
+     */
+    constructPromptForContactAnalysis(contact) {
+        // Adaptar el prompt para que sea más específico y pida un JSON bien definido
+        return `
+        Analiza la calidad y autenticidad de los siguientes datos de contacto. Responde EXCLUSIVAMENTE con un objeto JSON.
+        No incluyas explicaciones adicionales fuera del JSON. El JSON debe tener la siguiente estructura:
+        {
+          "is_genuine_person": boolean, // ¿Parece ser una persona real?
+          "is_suspicious": boolean, // ¿Hay alguna bandera roja o patrón sospechoso?
+          "suspicion_score": float, // Puntuación de sospecha de 0.0 a 1.0 (1.0 es muy sospechoso)
+          "suspicion_reason": string, // Breve explicación si es sospechoso (e.g., "Nombre parece falso", "Teléfono de prueba")
+          "data_completeness_score": float, // Puntuación de completitud de datos de 0.0 a 1.0
+          "data_accuracy_score": float, // Puntuación de precisión de datos de 0.0 a 1.0 (basado en formato y coherencia)
+          "quality_issues": [string], // Lista de problemas de calidad específicos (e.g., "Email malformado", "Nombre muy corto")
+          "recommendations": [string] // Lista de sugerencias para mejorar la calidad del contacto
+        }
+
+        Datos del Contacto:
+        Nombre: ${contact.name || "No proporcionado"}
+        Teléfono: ${contact.phone || "No proporcionado"}
+        Email: ${contact.email || "No proporcionado"}
+        Fuente: ${contact.source || "No proporcionada"}
+        Notas Adicionales: ${contact.notes || "Ninguna"}
+
+        Por favor, proporciona tu análisis en el formato JSON especificado arriba.
+        `;
+    }
+
+
+    /**
+     * Sugiere distribución de contactos entre asesores.
+     * Esta es una implementación heurística y puede ser mejorada con IA en el futuro.
+     * @param {Array<object>} contacts - Lista de contactos a distribuir.
+     * @param {Array<object>} advisors - Lista de asesores disponibles.
+     * @returns {Promise<object>} - Un objeto con las asignaciones y recomendaciones.
      */
     async suggestContactDistribution(contacts, advisors) {
-        try {
-            const distribution = {
-                assignments: [],
-                unassigned: [],
-                recommendations: []
-            };
+        logger.info('Iniciando sugerencia de distribución de contactos.', { numContacts: contacts.length, numAdvisors: advisors.length });
 
-            // Filter active advisors
-            const activeAdvisors = advisors.filter(advisor => advisor.isActive);
-            
-            if (activeAdvisors.length === 0) {
-                distribution.unassigned = contacts;
-                distribution.recommendations.push('No active advisors available');
-                return distribution;
-            }
+        const assignments = [];
+        const unassignedContacts = [];
+        const distributionLog = []; // Para loguear decisiones
 
-            // Sort contacts by priority and quality
-            const sortedContacts = contacts.sort((a, b) => {
-                const priorityWeight = { 'Urgent': 4, 'High': 3, 'Medium': 2, 'Low': 1 };
-                const aPriority = priorityWeight[a.priority] || 2;
-                const bPriority = priorityWeight[b.priority] || 2;
-                
-                if (aPriority !== bPriority) return bPriority - aPriority;
-                return (b.qualityScore || 0) - (a.qualityScore || 0);
-            });
+        if (!advisors || advisors.length === 0) {
+            logger.warn('No hay asesores disponibles para la distribución.');
+            return { assignments, unassignedContacts: contacts, log: ['No hay asesores activos para asignar.'] };
+        }
 
-            // Sort advisors by performance and availability
-            const sortedAdvisors = activeAdvisors.sort((a, b) => {
-                const aCapacity = (a.maxContacts - a.currentContactCount) / a.maxContacts;
-                const bCapacity = (b.maxContacts - b.currentContactCount) / b.maxContacts;
-                
-                if (Math.abs(aCapacity - bCapacity) > 0.1) {
-                    return bCapacity - aCapacity; // Higher capacity first
-                }
-                
+        // Filtrar asesores activos y con capacidad
+        const activeAdvisors = advisors.filter(a => a.isActive && (a.currentContactCount || 0) < (a.maxContacts || 50));
+
+        if (activeAdvisors.length === 0) {
+            logger.warn('No hay asesores activos con capacidad disponible.');
+            return { assignments, unassignedContacts: contacts, log: ['Todos los asesores activos han alcanzado su capacidad máxima.'] };
+        }
+
+        // Ordenar contactos: mayor qualityScore primero, luego por fecha de creación (más nuevos primero)
+        const sortedContacts = [...contacts].sort((a, b) => {
+            const scoreDiff = (b.qualityScore || 0) - (a.qualityScore || 0);
+            if (scoreDiff !== 0) return scoreDiff;
+            return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+        });
+
+        // Ordenar asesores: mayor performanceScore primero, luego menor carga actual
+        const sortedAdvisors = [...activeAdvisors].sort((a, b) => {
+            const performanceDiff = (b.performanceScore || 0) - (a.performanceScore || 0);
+            if (performanceDiff !== 0) return performanceDiff;
+            return (a.currentContactCount || 0) - (b.currentContactCount || 0);
+        });
+
+        // Crear un mapa para actualizar la cuenta de contactos de los asesores dinámicamente
+        const advisorLoad = new Map(sortedAdvisors.map(a => [a.id, a.currentContactCount || 0]));
+        const advisorMaxContacts = new Map(sortedAdvisors.map(a => [a.id, a.maxContacts || 50]));
+
+
+        for (const contact of sortedContacts) {
+            let assigned = false;
+            // Intentar asignar al mejor asesor disponible que no haya alcanzado su límite
+            // Iteramos sobre una copia ordenada de asesores para esta asignación particular
+            const availableAdvisorsForContact = [...sortedAdvisors].sort((a,b) => {
+                 // Priorizar asesores con menos carga actual para este contacto específico
+                const loadA = advisorLoad.get(a.id);
+                const loadB = advisorLoad.get(b.id);
+                if (loadA !== loadB) return loadA - loadB;
+                // Luego por performance
                 return (b.performanceScore || 0) - (a.performanceScore || 0);
             });
 
-            // Distribute contacts
-            let advisorIndex = 0;
-            for (const contact of sortedContacts) {
-                let assigned = false;
-                
-                // Try to assign to an advisor with capacity
-                for (let i = 0; i < sortedAdvisors.length; i++) {
-                    const advisor = sortedAdvisors[(advisorIndex + i) % sortedAdvisors.length];
-                    
-                    if (advisor.currentContactCount < advisor.maxContacts) {
-                        distribution.assignments.push({
-                            contactId: contact.id,
-                            advisorId: advisor.id,
-                            reason: this.getAssignmentReason(contact, advisor)
-                        });
-                        
-                        advisor.currentContactCount++;
-                        assigned = true;
-                        advisorIndex = (advisorIndex + 1) % sortedAdvisors.length;
-                        break;
-                    }
-                }
-                
-                if (!assigned) {
-                    distribution.unassigned.push(contact);
+
+            for (const advisor of availableAdvisorsForContact) {
+                const currentAdvisorLoad = advisorLoad.get(advisor.id);
+                const maxCap = advisorMaxContacts.get(advisor.id);
+
+                if (currentAdvisorLoad < maxCap) {
+                    assignments.push({ contactId: contact.id, advisorId: advisor.id, contactName: contact.name, advisorName: advisor.name });
+                    advisorLoad.set(advisor.id, currentAdvisorLoad + 1); // Actualizar carga
+                    distributionLog.push(`Contacto ${contact.id} (${contact.name}, QS:${contact.qualityScore}) asignado a Asesor ${advisor.id} (${advisor.name}, Perf:${advisor.performanceScore}, Carga:${currentAdvisorLoad + 1}/${maxCap})`);
+                    assigned = true;
+                    break; // Contacto asignado, pasar al siguiente contacto
                 }
             }
 
-            // Generate recommendations
-            if (distribution.unassigned.length > 0) {
-                distribution.recommendations.push(`${distribution.unassigned.length} contacts could not be assigned - consider increasing advisor capacity`);
+            if (!assigned) {
+                unassignedContacts.push(contact);
+                distributionLog.push(`Contacto ${contact.id} (${contact.name}) no pudo ser asignado (todos los asesores llenos o no disponibles).`);
             }
-
-            const avgLoad = distribution.assignments.length / activeAdvisors.length;
-            const overloadedAdvisors = activeAdvisors.filter(a => a.currentContactCount > avgLoad * 1.2);
-            if (overloadedAdvisors.length > 0) {
-                distribution.recommendations.push(`${overloadedAdvisors.length} advisors may be overloaded`);
-            }
-
-            return distribution;
-        } catch (error) {
-            logger.error('Error suggesting contact distribution', { error: error.message });
-            throw error;
         }
+        
+        if (unassignedContacts.length > 0) {
+            logger.warn(`${unassignedContacts.length} contactos no pudieron ser asignados.`, { reason: "Capacidad de asesores alcanzada o falta de asesores."});
+        }
+
+        logger.info('Distribución de contactos sugerida finalizada.', { assignedCount: assignments.length, unassignedCount: unassignedContacts.length });
+        return { assignments, unassignedContacts, log: distributionLog };
     }
 
-    /**
-     * Validate phone number using libphonenumber-js
-     */
-    validatePhoneNumber(phone) {
-        try {
-            if (!phone) return false;
-            
-            // Clean the phone number
-            const cleaned = phone.replace(/[^\d+]/g, '');
-            
-            // Basic validation
-            if (cleaned.length < 10) return false;
-            
-            // Use libphonenumber-js for validation
-            return isValidPhoneNumber(cleaned, 'MX'); // Default to Mexico
-        } catch (error) {
-            return false;
-        }
-    }
-
-    /**
-     * Check for suspicious name patterns
-     */
-    isSuspiciousName(name) {
-        const suspiciousPatterns = [
-            /^test/i,
-            /^demo/i,
-            /^fake/i,
-            /^sample/i,
-            /^\d+$/,
-            /^[a-z]+$/,
-            /^[A-Z]+$/,
-            /(.){3,}/, // Repeated characters
-            /^.{1,2}$/   // Too short
-        ];
-        
-        return suspiciousPatterns.some(pattern => pattern.test(name));
-    }
-
-    /**
-     * Find duplicate contacts
-     */
-    findDuplicates(contacts) {
-        const duplicates = [];
-        const phoneMap = new Map();
-        const emailMap = new Map();
-        
-        contacts.forEach(contact => {
-            // Check phone duplicates
-            if (contact.phone) {
-                const cleanPhone = contact.phone.replace(/[^\d]/g, '');
-                if (phoneMap.has(cleanPhone)) {
-                    duplicates.push({
-                        type: 'phone',
-                        contacts: [phoneMap.get(cleanPhone), contact.id],
-                        value: cleanPhone
-                    });
-                } else {
-                    phoneMap.set(cleanPhone, contact.id);
-                }
-            }
-            
-            // Check email duplicates
-            if (contact.email) {
-                const cleanEmail = contact.email.toLowerCase();
-                if (emailMap.has(cleanEmail)) {
-                    duplicates.push({
-                        type: 'email',
-                        contacts: [emailMap.get(cleanEmail), contact.id],
-                        value: cleanEmail
-                    });
-                } else {
-                    emailMap.set(cleanEmail, contact.id);
-                }
-            }
-        });
-        
-        return duplicates;
-    }
-
-    /**
-     * Get assignment reason for contact-advisor pairing
-     */
-    getAssignmentReason(contact, advisor) {
-        const reasons = [];
-        
-        if (advisor.performanceScore > 80) {
-            reasons.push('High-performing advisor');
-        }
-        
-        if (contact.priority === 'Urgent' || contact.priority === 'High') {
-            reasons.push('High priority contact');
-        }
-        
-        if (contact.qualityScore > 80) {
-            reasons.push('High quality lead');
-        }
-        
-        const capacity = (advisor.maxContacts - advisor.currentContactCount) / advisor.maxContacts;
-        if (capacity > 0.5) {
-            reasons.push('Available capacity');
-        }
-        
-        return reasons.length > 0 ? reasons.join(', ') : 'Round-robin assignment';
-    }
+    // Otros métodos del servicio (ej. análisis de sentimiento de notas, etc.) podrían ir aquí.
 }
 
 module.exports = GeminiService;

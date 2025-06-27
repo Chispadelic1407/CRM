@@ -1,128 +1,173 @@
 #!/bin/bash
 
-# Production Deployment Script for SSH/SFTP
-# Target: access-5018020518.webspace-host.com
+#=======
+# SCRIPT DE DEPLOYMENT GENÉRICO PARA SSH/RSYNC (Adaptado)
+#=======
+# Uso:
+# ./deploy-production.sh <usuario_ssh> <host_ssh> <ruta_remota_absoluta>
+# Ejemplo:
+# ./deploy-production.sh mi_usuario mi.servidor.com /var/www/mi_proyecto
+#
+# Este script tomará los valores por defecto si no se pasan argumentos,
+# pero es recomendable pasarlos para flexibilidad.
+#=======
 
-set -e
+set -e # Salir inmediatamente si un comando falla
 
-echo "🚀 Starting production deployment..."
+#--- Sección de Configuración (Valores por defecto, pueden ser sobrescritos por argumentos)
+DEFAULT_SSH_USER="a951193"
+DEFAULT_SSH_HOST="access-5018020518.webspace-host.com"
+DEFAULT_REMOTE_PATH="/home/a951193/crm-twilio" # Ruta absoluta en el servidor
 
-# Configuration
-SSH_HOST="access-5018020518.webspace-host.com"
-SSH_USER="a951193"
-SSH_PORT="22"
-REMOTE_PATH="/home/a951193/crm-twilio"
-LOCAL_PATH="."
+SSH_PORT="22" # Puerto SSH, rara vez cambia
+LOCAL_PATH="." # Directorio local del proyecto
+APP_PORT="3001" # Puerto en el que corre la app Node.js en el servidor (informativo)
 
-# Colors for output
-RED='\033[0;31m'
+# Comando para iniciar la aplicación en el servidor (backend/server.js es el entry point)
+APP_START_COMMAND="node backend/server.js"
+# Patrón para encontrar el proceso de la aplicación y detenerlo/verificarlo
+# Asegúrate que este patrón sea lo más específico posible para tu aplicación
+APP_PROCESS_NAME="node.*backend/server.js" # Regex para pgrep/pkill
+
+#--- Argumentos de Línea de Comandos
+SSH_USER="${1:-$DEFAULT_SSH_USER}"
+SSH_HOST="${2:-$DEFAULT_SSH_HOST}"
+REMOTE_PATH="${3:-$DEFAULT_REMOTE_PATH}"
+
+#--- Colores para la salida
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+RED='\033[0;31m'
+NC='\033[0m' # Sin Color
 
-# Function to print colored output
-print_status() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
+#--- Funciones para imprimir con colores
+print_status() { echo -e "${GREEN}[INFO]${NC} $1"; }
+print_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+print_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
-print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
-}
-
-print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
-
-# Check if required files exist
-print_status "Checking required files..."
+#--- Verificaciones Previas
+print_status "Verificando archivos requeridos localmente..."
 if [ ! -f ".env.production" ]; then
-    print_error ".env.production file not found! Please create it with actual credentials."
+    print_error ".env.production no encontrado. Este archivo es crucial para la configuración del entorno de producción."
+    print_error "Por favor, crea .env.production con las variables de entorno necesarias ANTES de desplegar."
+    exit 1
+fi
+if [ ! -d "backend" ] || [ ! -d "frontend" ]; then
+    print_error "Directorios 'backend' o 'frontend' no encontrados. Asegúrate de estar en el directorio raíz del proyecto."
+    exit 1
+fi
+if ! command -v rsync &> /dev/null; then
+    print_error "rsync no está instalado. Por favor, instálalo para continuar."
     exit 1
 fi
 
-if [ ! -f "package.json" ]; then
-    print_error "package.json not found!"
-    exit 1
-fi
+#--- Inicio del Proceso de Deploy
+echo ""
+print_status "🚀 Iniciando deployment para ${SSH_USER}@${SSH_HOST}..."
+print_status "Directorio remoto de destino: ${REMOTE_PATH}"
+echo ""
 
-# Create deployment package
-print_status "Creating deployment package..."
-rm -rf dist/
-mkdir -p dist/
+# 1. Crear el paquete de deployment (directorio 'dist')
+print_status "📦 Creando el paquete de deployment en '${LOCAL_PATH}/dist/'..."
+rm -rf "${LOCAL_PATH}/dist/" # Limpiar directorio dist anterior
+mkdir -p "${LOCAL_PATH}/dist/logs" # Crear logs dentro de dist para que se cree en el server
+mkdir -p "${LOCAL_PATH}/dist/backend"
+mkdir -p "${LOCAL_PATH}/dist/frontend"
 
-# Copy necessary files
-cp -r backend/ dist/
-cp -r frontend/ dist/
-cp package.json dist/
-cp .env.production dist/.env
-cp README.md dist/
-cp MANUAL_DE_USO.md dist/ 2>/dev/null || true
-cp -r config.php dist/ 2>/dev/null || true
-cp -r status.php dist/ 2>/dev/null || true
 
-# Create logs directory
-mkdir -p dist/logs/
+# Copiar los directorios principales del backend y frontend
+# Usar rsync para copiar localmente puede ser más eficiente si hay muchos archivos o para futuras exclusiones
+rsync -av --exclude 'node_modules/' --exclude '.git/' --exclude 'dist/' "${LOCAL_PATH}/backend/" "${LOCAL_PATH}/dist/backend/"
+rsync -av --exclude 'node_modules/' --exclude '.git/' --exclude 'dist/' "${LOCAL_PATH}/frontend/" "${LOCAL_PATH}/dist/frontend/"
 
-print_status "Deployment package created in dist/"
 
-# Upload files via SFTP
-print_status "Uploading files to server..."
+# Copiar archivos de configuración importantes y otros archivos raíz
+cp "${LOCAL_PATH}/package.json" "${LOCAL_PATH}/dist/"
+cp "${LOCAL_PATH}/package-lock.json" "${LOCAL_PATH}/dist/" # Muy importante para 'npm ci'
 
-# Create SFTP batch file
-cat > sftp_commands.txt << EOF
-mkdir ${REMOTE_PATH}
-mkdir ${REMOTE_PATH}/backend
-mkdir ${REMOTE_PATH}/frontend
-mkdir ${REMOTE_PATH}/logs
-put -r dist/* ${REMOTE_PATH}/
-chmod 755 ${REMOTE_PATH}/backend/server.js
-quit
-EOF
+# Renombrar .env.production a .env para el servidor
+cp "${LOCAL_PATH}/.env.production" "${LOCAL_PATH}/dist/.env"
+print_status "Archivo .env.production copiado como .env en el paquete."
 
-# Execute SFTP upload with password prompt
-echo "Please enter the password for ${SSH_USER}@${SSH_HOST} when prompted:"
-sftp -P ${SSH_PORT} -b sftp_commands.txt ${SSH_USER}@${SSH_HOST}
+# Copiar otros archivos si existen (ej. README, MANUAL_DE_USO)
+cp "${LOCAL_PATH}/README.md" "${LOCAL_PATH}/dist/" 2>/dev/null || print_warning "README.md no encontrado, omitiendo."
+cp "${LOCAL_PATH}/MANUAL_DE_USO.md" "${LOCAL_PATH}/dist/" 2>/dev/null || print_warning "MANUAL_DE_USO.md no encontrado, omitiendo."
+# cp "${LOCAL_PATH}/config.php" "${LOCAL_PATH}/dist/" 2>/dev/null || true # Si aún los usas
+# cp "${LOCAL_PATH}/status.php" "${LOCAL_PATH}/dist/" 2>/dev/null || true # Si aún los usas
 
-# Clean up
-rm -f sftp_commands.txt
+print_status "Paquete de deployment creado con éxito."
+echo ""
 
-print_status "Files uploaded successfully!"
+# 2. Subir archivos vía Rsync (más eficiente que SFTP para transferencias incrementales)
+print_status "📤 Subiendo archivos al servidor vía rsync..."
+# --delete borrará archivos en el destino que no estén en el origen (dist/)
+# Esto asegura que el servidor remoto sea un espejo exacto de 'dist/'
+rsync -avz -e "ssh -p ${SSH_PORT}" --delete --exclude '/logs/*' "${LOCAL_PATH}/dist/" "${SSH_USER}@${SSH_HOST}:${REMOTE_PATH}/"
+# Excluimos /logs/* de la sincronización con --delete para no borrar logs existentes en el servidor,
+# pero la estructura de logs se crea si no existe porque dist/logs está.
 
-# Install dependencies and start application via SSH
-print_status "Installing dependencies and starting application..."
-echo "Please enter the password for ${SSH_USER}@${SSH_HOST} when prompted for SSH connection:"
+print_status "Archivos subidos."
+echo ""
 
-ssh -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} << 'ENDSSH'
-cd /home/a951193/crm-twilio
+# 3. Instalar dependencias y reiniciar la aplicación vía SSH
+print_status "⚙️  Ejecutando comandos remotos (instalación de dependencias, reinicio de app)..."
+# Usamos << 'ENDSSH' para evitar expansión de variables locales no deseadas dentro del bloque SSH
+ssh -p "${SSH_PORT}" "${SSH_USER}@${SSH_HOST}" bash << ENDSSH
+set -e # Salir si un comando falla dentro del script SSH
 
-# Install Node.js dependencies
-npm install --production
+echo "[REMOTE] Cambiando al directorio de la aplicación: ${REMOTE_PATH}"
+cd "${REMOTE_PATH}"
 
-# Stop any existing processes
-pkill -f "node.*server.js" || true
+echo "[REMOTE] Asegurando que el directorio de logs exista..."
+mkdir -p logs # Asegurar que exista el directorio de logs
 
-# Start the application
-nohup node backend/server.js > logs/app.log 2>&1 &
+echo "[REMOTE] Instalando dependencias de Node.js (npm ci --omit=dev)..."
+# 'npm ci' es mejor para producción: instala desde package-lock.json y es más rápido.
+# '--omit=dev' (o NODE_ENV=production npm ci) para no instalar devDependencies.
+NODE_ENV=production npm ci --omit=dev --legacy-peer-deps # Añadido --legacy-peer-deps por si hay conflictos
 
-# Wait a moment for startup
-sleep 3
+echo "[REMOTE] Deteniendo cualquier proceso existente de la aplicación..."
+# Usar pkill con el patrón definido. '|| true' para no fallar si no hay procesos corriendo.
+pkill -f "${APP_PROCESS_NAME}" || true
+echo "[REMOTE] Procesos anteriores detenidos (si existían)."
 
-# Check if application is running
-if pgrep -f "node.*server.js" > /dev/null; then
-    echo "✅ Application started successfully!"
-    echo "🌐 Application should be available at: https://access-5018020518.webspace-host.com:3001"
+echo "[REMOTE] Iniciando la aplicación en segundo plano con nohup..."
+# nohup para que siga corriendo si se cierra la sesión SSH
+# Redirigir stdout y stderr a un archivo de log. '&' para segundo plano.
+nohup ${APP_START_COMMAND} > "${REMOTE_PATH}/logs/app.log" 2>&1 &
+
+echo "[REMOTE] Aplicación iniciada. Verificando estado en 5 segundos..."
+sleep 5
+
+# Verificar si la aplicación está corriendo
+# Usar pgrep con el patrón definido
+if pgrep -f "${APP_PROCESS_NAME}" > /dev/null; then
+    echo -e "${GREEN}[REMOTE] ✅ ¡Aplicación iniciada correctamente!${NC}"
+    echo "[REMOTE] PID del proceso: \$(pgrep -f \"${APP_PROCESS_NAME}\")"
+    # echo "[REMOTE] 🌐 URL de la aplicación (aproximada): http://<tu_dominio_o_IP>:${APP_PORT}"
 else
-    echo "❌ Failed to start application. Check logs:"
-    tail -20 logs/app.log
-    exit 1
+    echo -e "${RED}[REMOTE] ❌ Fallo al iniciar la aplicación.${NC} Revisa los logs:"
+    echo "[REMOTE] --- Últimas 20 líneas de logs/app.log ---"
+    tail -20 "${REMOTE_PATH}/logs/app.log"
+    echo "[REMOTE] --- Fin de logs ---"
+    exit 1 # Salir con error para que el script principal también falle
 fi
 ENDSSH
 
-print_status "Deployment completed successfully!"
-print_status "Application URL: https://access-5018020518.webspace-host.com:3001"
-print_warning "Please verify the application is working by visiting the URL above."
+# Verificar el código de salida del bloque SSH
+if [ $? -ne 0 ]; then
+    print_error "Hubo un error durante la ejecución de comandos remotos. Revisa la salida."
+    exit 1
+fi
 
-# Clean up local dist folder
-rm -rf dist/
+print_status "✅ Deployment completado con éxito."
+print_warning "Verifica la aplicación visitando su URL y revisando los logs en el servidor si es necesario."
+echo ""
 
-echo "🎉 Deployment finished!"
+# 4. Limpieza local
+print_status "🧹 Limpiando directorio 'dist/' local..."
+rm -rf "${LOCAL_PATH}/dist/"
+
+echo ""
+print_status "🎉 ¡Deployment finalizado!"
+echo ""

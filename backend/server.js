@@ -1,4 +1,4 @@
-// Load environment variables first
+// Cargar variables de entorno primero
 require('dotenv').config();
 
 const express = require('express');
@@ -6,349 +6,213 @@ const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
 const path = require('path');
+const logger = require('./utils/logger'); // Asumiendo que tienes un logger en utils/
+const { sequelize } = require('./models'); // Importar para cerrar la conexión al final
 
-// Import custom modules
-const logger = require('./utils/logger');
-const { apiLimiter } = require('./middleware/rateLimiter');
-const { cacheMiddleware, warmCache, getCacheStats } = require('./middleware/cache');
-const TwilioService = require('./services/twilioService');
-const DatabaseService = require('./services/databaseService');
-const spoofCallingRoutes = require('./routes/spoofCalling');
-const aiRoutes = require('./routes/ai');
-const advisorRoutes = require('./routes/advisors');
+// Importar Rutas
+const authRoutes = require('./routes/auth').router; // Asegúrate que auth.js exporta { router }
+const twilioRoutes = require('./routes/twilio'); // Anteriormente spoofCallingRoutes
 const contactRoutes = require('./routes/contacts');
-const { router: authRoutes } = require('./routes/auth');
+const advisorRoutes = require('./routes/advisors');
+const aiRoutes = require('./routes/ai');
+const DatabaseService = require('./services/databaseService'); // Para inicialización
 
-// Validate environment variables
-const requiredEnvVars = [
-    'TWILIO_ACCOUNT_SID',
-    'TWILIO_AUTH_TOKEN',
-    'TWILIO_PHONE_NUMBER',
-    'AGENT_PHONE_NUMBER'
-];
-
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
-if (missingEnvVars.length > 0) {
-    logger.error('Missing required environment variables', { missing: missingEnvVars });
-    process.exit(1);
-}
-
-// Initialize Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// Initialize Twilio service
-let twilioService;
-try {
-    twilioService = new TwilioService();
-    logger.info('Twilio service initialized successfully');
-} catch (error) {
-    logger.error('Failed to initialize Twilio service', { error: error.message });
-    process.exit(1);
-}
-
-// Initialize Database service
-let databaseService;
-try {
-    databaseService = new DatabaseService();
-    logger.info('Database service initialized successfully');
-} catch (error) {
-    logger.error('Failed to initialize Database service', { error: error.message });
-    process.exit(1);
-}
-
-// Security middleware
+// Middlewares de Seguridad
 app.use(helmet({
-    contentSecurityPolicy: {
+    contentSecurityPolicy: { // Ejemplo de política más restrictiva, ajusta según necesidades
         directives: {
             defaultSrc: ["'self'"],
-            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"],
+            styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com", "https://cdnjs.cloudflare.com"], // Permitir estilos inline y fuentes externas si son necesarias
             fontSrc: ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-            scriptSrc: ["'self'", "'unsafe-inline'", "https://cdn.tailwindcss.com"],
-            imgSrc: ["'self'", "data:", "https:"],
-            connectSrc: ["'self'"]
+            scriptSrc: ["'self'", "'unsafe-inline'"], // Cuidado con 'unsafe-inline' en producción para scripts
+            imgSrc: ["'self'", "data:", "https:"], // Permitir imágenes de data URIs y HTTPS
+            connectSrc: ["'self'"], // Limitar conexiones a 'self' por defecto
+            // frameSrc: ["'self'", "https://youtube.com"], // Si embebes iframes de sitios específicos
+        },
+    },
+    crossOriginEmbedderPolicy: false, // Ajustar si es necesario para COEP
+}));
+
+// Configuración de CORS más específica
+const allowedOrigins = process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+logger.info(`Orígenes CORS permitidos: ${allowedOrigins.join(', ')}`);
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Permitir solicitudes sin origen (como mobile apps o curl requests) o si el origen está en la lista blanca
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            logger.warn(`Origen CORS bloqueado: ${origin}`);
+            callback(new Error('Not allowed by CORS'));
         }
     },
-    crossOriginEmbedderPolicy: false
+    credentials: true, // Si necesitas enviar cookies o encabezados de autorización
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'], // Métodos HTTP permitidos
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'], // Encabezados permitidos
 }));
 
-// Performance middleware
-app.use(compression({
-    level: 6,
-    threshold: 1024,
-    filter: (req, res) => {
-        if (req.headers['x-no-compression']) {
-            return false;
-        }
-        return compression.filter(req, res);
-    }
-}));
 
-// CORS configuration
-const corsOptions = {
-    origin: process.env.NODE_ENV === 'production' 
-        ? process.env.ALLOWED_ORIGINS?.split(',') || ['http://localhost:3000']
-        : true,
-    credentials: true,
-    optionsSuccessStatus: 200,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-};
+// Middlewares de Rendimiento y Parsing
+app.use(compression()); // Comprimir respuestas
+app.use(express.json({ limit: '10mb' })); // Parsear JSON, con límite de tamaño
+app.use(express.urlencoded({ extended: true, limit: '10mb' })); // Parsear application/x-www-form-urlencoded
 
-app.use(cors(corsOptions));
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Request logging middleware
+// Middleware de logging de peticiones
 app.use((req, res, next) => {
     const start = Date.now();
-    
     res.on('finish', () => {
         const duration = Date.now() - start;
-        logger.info('Request completed', {
-            method: req.method,
-            url: req.originalUrl,
-            status: res.statusCode,
-            duration: `${duration}ms`,
-            ip: req.ip,
-            userAgent: req.get('User-Agent')
-        });
+        logger.info(`${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms - ${req.ip} - ${req.get('User-Agent')}`);
     });
-    
     next();
 });
 
-// Apply rate limiting to all routes
-app.use(apiLimiter);
 
-// Health check endpoint
-app.get('/health', cacheMiddleware(60), (req, res) => {
-    const healthCheck = {
-        uptime: process.uptime(),
-        message: 'OK',
-        timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development',
-        version: require('./package.json').version,
-        cache: getCacheStats()
-    };
-    
-    res.json(healthCheck);
+// Montaje de Rutas de la API
+// Es buena práctica tener un prefijo base para todas las rutas de la API, ej. /api/v1
+const apiPrefix = process.env.API_PREFIX || '/api';
+
+app.use(`${apiPrefix}/auth`, authRoutes);
+app.use(`${apiPrefix}/twilio`, twilioRoutes); // Rutas para Twilio (antes spoof)
+app.use(`${apiPrefix}/contacts`, contactRoutes);
+app.use(`${apiPrefix}/advisors`, advisorRoutes);
+app.use(`${apiPrefix}/ai`, aiRoutes);
+
+// Ruta de health check básica
+app.get(`${apiPrefix}/health`, (req, res) => {
+    res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 
-// Cache statistics endpoint
-app.get('/api/cache/stats', (req, res) => {
-    const stats = getCacheStats();
-    res.json({
-        success: true,
-        stats: stats
+
+// Servir archivos estáticos del Frontend (si este backend también sirve el frontend)
+// Asumiendo que el frontend está en una carpeta 'frontend' en el directorio raíz del proyecto.
+// __dirname se refiere al directorio actual (backend), así que necesitamos subir un nivel.
+const frontendPath = path.join(__dirname, '../../frontend'); // Ajusta esta ruta si tu estructura es diferente
+if (require('fs').existsSync(frontendPath)) {
+    app.use(express.static(frontendPath));
+    logger.info(`Sirviendo archivos estáticos desde: ${frontendPath}`);
+
+    // Si es una SPA (Single Page Application), todas las rutas no API deben servir el index.html
+    app.get('*', (req, res, next) => {
+        if (!req.path.startsWith(apiPrefix)) { // Solo si no es una ruta de API
+            const indexPath = path.join(frontendPath, 'index.html');
+            if (require('fs').existsSync(indexPath)) {
+                res.sendFile(indexPath);
+            } else {
+                // Si index.html no existe, podría ser un 404 real o pasar al siguiente manejador
+                logger.warn(`index.html no encontrado en ${frontendPath} para la ruta ${req.path}`);
+                next();
+            }
+        } else {
+            next(); // Es una ruta de API, pasar a los manejadores de error de API
+        }
     });
+} else {
+    logger.warn(`Directorio de frontend no encontrado en ${frontendPath}. No se servirán archivos estáticos.`);
+}
+
+
+// Manejadores de Errores de API (deben ir después de todas las rutas)
+
+// Middleware para rutas API no encontradas (404)
+app.use(apiPrefix, (req, res, next) => { // Solo aplica a rutas bajo /api que no fueron manejadas antes
+    res.status(404).json({ success: false, message: `Ruta API no encontrada: ${req.method} ${req.originalUrl}` });
 });
 
-// --- Enhanced SMS Endpoint ---
-app.post('/send-sms', async (req, res) => {
-    const { to, body, from } = req.body;
-    
-    if (!to || !body) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Missing required fields: to, body' 
-        });
-    }
-
-    try {
-        const options = from ? { from } : {};
-        const result = await twilioService.sendSMS(to, body, options);
-        
-        if (result.success) {
-            res.json({
-                success: true,
-                messageId: result.messageId,
-                message: result.message
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: result.error
-            });
-        }
-    } catch (error) {
-        logger.error('Error in SMS endpoint', {
-            error: error.message,
-            to: to,
-            ip: req.ip
-        });
-        
-        res.status(500).json({ 
-            success: false, 
-            message: 'Internal server error' 
-        });
-    }
-});
-
-// --- Enhanced Call Endpoint ---
-app.post('/make-call', async (req, res) => {
-    const { to, message, record } = req.body;
-    
-    if (!to) {
-        return res.status(400).json({ 
-            success: false, 
-            message: 'Missing required field: to' 
-        });
-    }
-
-    try {
-        const options = {
-            message: message || 'Conectando con el cliente, por favor espere.',
-            record: record || false,
-            statusCallback: `${process.env.VOICE_WEBHOOK_URL}/status`
-        };
-        
-        const result = await twilioService.makeCall(to, options);
-        
-        if (result.success) {
-            res.json({
-                success: true,
-                callId: result.callId,
-                message: result.message
-            });
-        } else {
-            res.status(500).json({
-                success: false,
-                message: result.error
-            });
-        }
-    } catch (error) {
-        logger.error('Error in call endpoint', {
-            error: error.message,
-            to: to,
-            ip: req.ip
-        });
-        
-        res.status(500).json({ 
-            success: false, 
-            message: 'Internal server error' 
-        });
-    }
-});
-
-// Mount authentication routes
-app.use('/api/auth', authRoutes);
-
-// Mount spoof calling routes
-app.use('/api/spoof', spoofCallingRoutes);
-
-// Mount AI and database management routes
-app.use('/api/ai', aiRoutes);
-app.use('/api/advisors', advisorRoutes);
-app.use('/api/contacts', contactRoutes);
-
-// Serve static files from frontend
-app.use(express.static(path.join(__dirname, '../frontend'), {
-    maxAge: process.env.NODE_ENV === 'production' ? '1d' : '0',
-    etag: true,
-    lastModified: true
-}));
-
-// Catch-all handler for SPA (only for non-API routes)
-app.get('*', (req, res, next) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) {
-        return next();
-    }
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-// Global error handler
+// Middleware de manejo de errores global (500)
+// Este es el último middleware, por lo que captura cualquier error pasado por next(error)
 app.use((error, req, res, next) => {
-    logger.error('Unhandled error', {
-        error: error.message,
-        stack: error.stack,
+    logger.error('Error no manejado:', {
+        message: error.message,
+        stack: error.stack, // No exponer stack en producción
         url: req.originalUrl,
         method: req.method,
         ip: req.ip
     });
 
-    res.status(500).json({
+    const statusCode = error.statusCode || 500;
+    const responseError = {
         success: false,
-        message: process.env.NODE_ENV === 'production' 
-            ? 'Internal server error' 
-            : error.message
-    });
-});
-
-// Handle 404 errors
-app.use((req, res) => {
-    logger.warn('Route not found', {
-        url: req.originalUrl,
-        method: req.method,
-        ip: req.ip
-    });
-    
-    res.status(404).json({
-        success: false,
-        message: 'Route not found'
-    });
-});
-
-// Graceful shutdown handling
-process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully');
-    server.close(() => {
-        logger.info('Process terminated');
-        process.exit(0);
-    });
-});
-
-process.on('SIGINT', () => {
-    logger.info('SIGINT received, shutting down gracefully');
-    server.close(() => {
-        logger.info('Process terminated');
-        process.exit(0);
-    });
-});
-
-// Unhandled promise rejection handler
-process.on('unhandledRejection', (reason, promise) => {
-    logger.error('Unhandled Rejection', {
-        reason: reason,
-        promise: promise
-    });
-});
-
-// Uncaught exception handler
-process.on('uncaughtException', (error) => {
-    logger.error('Uncaught Exception', {
-        error: error.message,
-        stack: error.stack
-    });
-    process.exit(1);
-});
-
-// Start server
-const server = app.listen(PORT, '0.0.0.0', async () => {
-    logger.info(`Server started successfully`, {
-        port: PORT,
-        environment: process.env.NODE_ENV || 'development',
-        pid: process.pid
-    });
-    
-    // Initialize database
-    try {
-        await databaseService.initialize();
-        logger.info('Database initialized successfully');
-    } catch (error) {
-        logger.error('Failed to initialize database', { error: error.message });
+        message: process.env.NODE_ENV === 'production' && statusCode === 500 ? 'Error interno del servidor.' : error.message,
+    };
+    // Añadir stack en desarrollo para debugging
+    if (process.env.NODE_ENV !== 'production') {
+        responseError.stack = error.stack;
     }
-    
-    // Warm up cache
-    await warmCache();
-    
-    logger.info('Application ready to accept connections');
+
+    res.status(statusCode).json(responseError);
 });
 
-// Set server timeout
-server.timeout = 30000; // 30 seconds
 
-module.exports = app;
+// Arranque del Servidor y Cierre Seguro
+let server; // Declarar server aquí para que sea accesible en gracefulShutdown
+
+const startServer = async () => {
+    try {
+        // Inicializar servicios (como la base de datos) ANTES de que el servidor empiece a escuchar
+        const dbService = new DatabaseService();
+        await dbService.initialize(); // Esto ya loguea sus propios mensajes
+
+        server = app.listen(PORT, '0.0.0.0', () => { // Escuchar en 0.0.0.0 para aceptar conexiones externas
+            logger.info(`Servidor corriendo en el puerto ${PORT} en modo ${process.env.NODE_ENV || 'development'}.`);
+            logger.info(`Accede en http://localhost:${PORT} o la IP correspondiente.`);
+        });
+    } catch (error) {
+        logger.error('Fallo catastrófico al iniciar el servidor o sus servicios.', { error: error.message, stack: error.stack });
+        process.exit(1); // Salir si la inicialización de servicios críticos falla
+    }
+};
+
+
+const gracefulShutdown = () => {
+    logger.info('Recibida señal de cierre. Cerrando servidor HTTP...');
+    if (server) {
+        server.close(async () => { // Esperar a que todas las conexiones existentes terminen
+            logger.info('Servidor HTTP cerrado.');
+            try {
+                await sequelize.close(); // Cerrar la conexión de la base de datos
+                logger.info('Conexión de la base de datos cerrada.');
+            } catch (dbError) {
+                logger.error('Error al cerrar la conexión de la base de datos.', { error: dbError.message });
+            }
+            process.exit(0); // Salir del proceso limpiamente
+        });
+    } else {
+        // Si el servidor nunca se inició, simplemente salir
+        logger.info('El servidor no se había iniciado. Saliendo.');
+        process.exit(0);
+    }
+
+    // Forzar cierre después de un timeout si las conexiones no terminan
+    setTimeout(() => {
+        logger.error('No se pudieron cerrar las conexiones a tiempo, forzando cierre.');
+        process.exit(1);
+    }, 10000); // 10 segundos de gracia
+};
+
+process.on('SIGTERM', gracefulShutdown); // Señal de terminación estándar
+process.on('SIGINT', gracefulShutdown);  // Ctrl+C
+
+// Manejo de promesas no capturadas y excepciones no capturadas
+process.on('unhandledRejection', (reason, promise) => {
+    logger.error('Unhandled Rejection at:', { promise, reason: reason.stack || reason });
+    // Considerar cerrar el servidor aquí si es un error crítico, o dejarlo para SIGTERM/SIGINT
+    // process.exit(1); // Descomentar si se desea que la app falle rápido ante estos errores
+});
+
+process.on('uncaughtException', (error) => {
+    logger.error('Uncaught Exception:', { message: error.message, stack: error.stack });
+    // Es mandatorio cerrar tras una excepción no capturada, ya que el estado de la app es desconocido
+    gracefulShutdown(); // Intentar un cierre seguro
+    // Forzar salida si gracefulShutdown no funciona rápido
+    setTimeout(() => process.exit(1), 2000);
+});
+
+// Iniciar el servidor
+startServer();
+
+module.exports = app; // Exportar app para posibles pruebas o uso programático

@@ -1,306 +1,280 @@
-# AI-Powered CRM System with Gemini Integration
+# AI-Powered CRM System with Gemini Integration - v3.1.0
 
 ## Overview
 
-This is an advanced Customer Relationship Management (CRM) system enhanced with Google Gemini AI capabilities for intelligent contact analysis, data quality assessment, and automated advisor assignment. The system combines traditional CRM functionality with cutting-edge AI to provide superior contact management and business intelligence.
+This is an advanced Customer Relationship Management (CRM) system enhanced with Google Gemini AI capabilities for intelligent contact analysis, data quality assessment, and automated advisor assignment. The system combines traditional CRM functionality with cutting-edge AI to provide superior contact management and business intelligence. This version (3.1.0) incorporates significant updates to models, services, security, and deployment processes.
 
 ## 🚀 Key Features
 
-### AI-Powered Contact Analysis
-- **Intelligent Data Validation**: Automatic phone number and email validation using AI
-- **Quality Scoring**: AI-driven quality assessment for each contact (0-100 scale)
-- **Suspicious Contact Detection**: Identifies fake, test, or low-quality contacts
-- **Data Completeness Analysis**: Evaluates missing information and suggests improvements
+### 🧠 AI-Powered Contact Analysis (Enhanced)
+- **Intelligent Data Validation**: Automatic phone number (libphonenumber-js) and email validation. Normalization of phone numbers to E.164.
+- **Comprehensive Quality Scoring**: AI-driven quality assessment (`qualityScore` 0-100) for each contact, based on configurable `SCORING_WEIGHTS` (valid phone/email, name completeness, AI suspicion).
+- **Suspicious Contact Detection**:
+    - Pattern-based detection for names (e.g., "test", "demo", repeated chars).
+    - Gemini AI analysis for deeper authenticity checks, influencing the score.
+- **Data Completeness Analysis**: Evaluates required vs. optional fields to contribute to the quality score.
 
-### Smart Advisor Management
-- **Automated Contact Distribution**: AI-powered assignment based on advisor performance and capacity
-- **Performance Tracking**: Comprehensive metrics for each advisor
-- **Workload Balancing**: Intelligent distribution to prevent overload
-- **Specialization Matching**: Assigns contacts based on advisor expertise
+### ♟️ Smart Advisor Management (Enhanced)
+- **Automated Contact Distribution**: Gemini AI-assisted assignment logic considering advisor `performanceScore`, current workload (`currentContactCount` vs `maxContacts`), and contact `qualityScore`.
+- **Performance Tracking**: Advisor model includes `performanceScore`.
+- **Workload Balancing**: Distribution aims to assign to the best available advisor with capacity.
 
-### Database Health Monitoring
-- **Real-time Analytics**: Live statistics on contact quality and distribution
-- **Duplicate Detection**: Identifies and manages duplicate contacts
-- **Data Cleaning Tools**: Automated removal of suspicious and invalid entries
-- **Quality Improvement Suggestions**: AI-generated recommendations for data enhancement
+### 🗂️ Robust Data Management
+- **Sequelize Models (User, Contact, Advisor)**: Enriched with more fields, strong validations (e.g., `isStrongPassword` for User), hooks for hashing and normalization, and optimized indexes.
+- **Transactional Operations**: Key database operations (create contact, distribute) are wrapped in Sequelize transactions for data integrity.
+- **Dynamic Model Loading**: `models/index.js` now loads models dynamically.
 
-### Advanced Communication Features
-- **Spoof Calling System**: Professional caller ID management
-- **SMS Integration**: Bulk messaging with Twilio integration
-- **Call Recording**: Automated call logging and recording
-- **Multi-channel Communication**: Email, SMS, and voice integration
+### 📞 Advanced Communication Features (Twilio)
+- **Spoof Calling System**: Make calls with a custom Caller ID (`spoofNumber`).
+- **SMS Integration**: Send SMS messages via Twilio.
+- **Dedicated Twilio Controller & Routes**: Logic modularized into `twilioController.js` and routes grouped under `routes/twilio.js`.
+- **Webhook Handling**: Ready for Twilio webhooks for call status and recordings.
+
+### 🛡️ Enhanced Security & Reliability
+- **Helmet.js**: Configured for security headers, including a Content Security Policy (CSP).
+- **Graceful Shutdown**: Ensures the server handles active connections and closes resources properly on termination signals.
+- **Improved Error Handling**: Standardized API error responses and more detailed server-side logging.
+- **CORS Configuration**: Flexible CORS policy configurable via environment variables.
+- **Input Validation**: `express-validator` used in controllers for request sanitization.
+- **Password Security**: bcrypt for password hashing with configurable salt rounds.
+
+### ⚙️ Performance & Deployment
+- **Response Compression**: `compression` middleware enabled.
+- **Optimized Deployment Script**: `deploy-production.sh` now uses `rsync` for efficient file transfer and `npm ci` for consistent production installs.
+- **Structured Logging**: Winston logger for detailed application event tracking.
 
 ## 🏗️ System Architecture
 
-### Backend (Node.js/Express)
+### Backend (Node.js/Express) - Updated
 ```
 backend/
-├── models/           # Sequelize database models
-│   ├── Contact.js    # Contact entity with AI analysis fields
-│   ├── Advisor.js    # Advisor management model
-│   └── index.js      # Database configuration
-├── services/         # Business logic services
-│   ├── geminiService.js     # AI analysis and recommendations
-│   ├── databaseService.js   # Database operations
-│   └── twilioService.js     # Communication services
+├── controllers/      # Request handlers
+│   └── twilioController.js # Logic for Twilio SMS/calls
+├── models/           # Sequelize database models (User, Contact, Advisor, index)
+│   ├── User.js       # User model with password validation and hashing
+│   ├── Contact.js    # Contact model with qualityScore, AI analysis fields, phone normalization
+│   ├── Advisor.js    # Advisor model with performanceScore, maxContacts
+│   └── index.js      # Dynamic model loading, DB configuration
+├── services/         # Business logic
+│   ├── geminiService.js     # Enhanced AI analysis, scoring, distribution logic
+│   ├── databaseService.js   # Transactional DB operations, default data creation
+│   └── twilioService.js     # Twilio communication services
 ├── routes/           # API endpoints
-│   ├── ai.js         # AI analysis endpoints
+│   ├── auth.js       # Authentication routes
+│   ├── twilio.js     # Routes for Twilio functionalities (SMS, Call, Spoof, Webhooks)
 │   ├── contacts.js   # Contact management
 │   ├── advisors.js   # Advisor management
-│   └── spoofCalling.js # Communication features
-├── middleware/       # Custom middleware
-│   ├── cache.js      # Redis caching
-│   └── rateLimiter.js # API rate limiting
-└── utils/           # Utility functions
-    └── logger.js    # Structured logging
+│   └── ai.js         # AI-specific analysis endpoints
+├── middleware/       # Custom middleware (e.g., rateLimiter, auth)
+└── utils/            # Utility functions (e.g., logger)
+└── server.js         # Main Express server setup, security, error handling
 ```
 
-### Frontend (HTML/CSS/JavaScript)
+### Frontend (HTML/CSS/JavaScript) - Updated
 ```
 frontend/
-├── index.html       # Main dashboard
-├── css/            # Styling
-├── js/             # Client-side logic
-└── assets/         # Static resources
+├── js/
+│   └── spoofCalling.js # Enhanced with DOM caching, robust polling, updated API calls
+└── ... (index.html, css/)
 ```
 
 ## 🔧 Installation & Setup
 
 ### Prerequisites
-- Node.js 16+ 
-- npm or yarn
-- SQLite (default) or PostgreSQL/MySQL
+- Node.js >=18.0.0 (as per `package.json` engines)
+- npm
+- MariaDB (or MySQL)
 - Google Gemini API key
-- Twilio account (optional, for SMS/calls)
+- Twilio Account SID, Auth Token, Phone Number
 
-### Environment Configuration
-
-Create a `.env` file in the backend directory:
+### Environment Configuration (`.env` file in `backend/`)
+Create a `.env` file in the `backend/` directory (or `.env.production` for production deployments, which will be copied as `.env` by the deploy script).
 
 ```env
-# Twilio Configuration (Optional - runs in demo mode without)
-TWILIO_ACCOUNT_SID=your_twilio_account_sid_here
-TWILIO_AUTH_TOKEN=your_twilio_auth_token_here
-TWILIO_PHONE_NUMBER=your_twilio_phone_number_here
-AGENT_PHONE_NUMBER=your_agent_phone_number_here
-
 # Server Configuration
+NODE_ENV=development # or production
 PORT=3001
-NODE_ENV=development
+API_PREFIX=/api # Base path for all API routes
+CORS_ORIGIN=http://localhost:3000,http://your-frontend-domain.com # Comma-separated origins
 
-# Gemini AI Configuration
-GEMINI_API_KEY=your_gemini_api_key_here
+# Password Security
+BCRYPT_SALT_ROUNDS=12
 
-# Database Configuration
-DATABASE_URL=sqlite:./database.sqlite
+# Twilio Configuration
+TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_PHONE_NUMBER=+1234567890 # Your default Twilio number
+AGENT_PHONE_NUMBER=+1xxxxxxxxxx # Optional: A specific agent number
+VOICE_WEBHOOK_URL=https://your-app-domain.com/api/twilio/webhook # Base URL for Twilio voice webhooks
 
-# Optional: Redis for caching
-REDIS_URL=redis://localhost:6379
+# Google Gemini AI Configuration
+GEMINI_API_KEY=AIxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Database Configuration (MariaDB/MySQL)
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=your_crm_db
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_DIALECT=mysql # or mariadb
+
+# JWT Secret (if using JWT based authentication)
+# JWT_SECRET=your_very_strong_jwt_secret
 ```
 
 ### Installation Steps
+1.  **Clone Repository**
+2.  **Backend Setup**:
+    ```bash
+    cd backend
+    npm install
+    ```
+3.  **Configure `.env`** as shown above.
+4.  **Start Backend Server**:
+    ```bash
+    npm run dev # For development with nodemon
+    # or
+    npm start # For production start
+    ```
+5.  **Frontend**: Serve `frontend/index.html` and related assets. The backend can do this if configured.
 
-1. **Clone and Install Dependencies**
-```bash
-cd backend
-npm install
-```
+### Accessing the Application
+-   **Frontend**: Typically `http://localhost:3000` (if served separately) or `http://localhost:3001` (if backend serves it).
+-   **API Base URL**: `http://localhost:3001/api` (or your `API_PREFIX`).
 
-2. **Start the Server**
-```bash
-npm start
-```
+## 📊 API Endpoints (Illustrative - check `routes/` for specifics)
 
-3. **Access the Application**
-- Frontend: http://localhost:3001
-- API Documentation: http://localhost:3001/api
+Base path: `/api` (configurable via `API_PREFIX`)
 
-## 📊 API Endpoints
+### Contact Management (`/contacts`)
+-   `POST /` - Create contact (triggers AI analysis).
+-   `GET /` - List contacts (supports filtering/pagination).
+-   `PUT /:id` - Update contact (may trigger re-analysis).
+-   `DELETE /:id` - Delete contact.
 
-### Contact Management
-- `GET /api/contacts` - List contacts with filtering
-- `POST /api/contacts` - Create contact with AI analysis
-- `PUT /api/contacts/:id` - Update contact (triggers re-analysis)
-- `DELETE /api/contacts/:id` - Delete contact
-- `POST /api/contacts/bulk` - Bulk import with AI validation
+### Twilio Communications (`/twilio`)
+-   `POST /send-sms` - Send an SMS.
+    -   Body: `{ "to": "+1...", "body": "Hello", "from": "+1..." (optional) }`
+-   `POST /make-call` - Initiate a call (spoof or regular).
+    -   Body: `{ "to": "+1...", "spoofNumber": "+1...", "message": "Connecting...", "record": false }`
+-   Webhooks:
+    -   `POST /webhook/voice`
+    -   `POST /webhook/status`
+    -   `POST /webhook/recording`
+-   Session Management (for active spoof calls):
+    -   `GET /session/:sessionId`
+    -   `POST /session/:sessionId/end`
 
-### AI Analysis
-- `POST /api/ai/analyze-contacts` - Analyze entire database
-- `POST /api/ai/validate-contact` - Validate individual contact
-- `POST /api/ai/clean-database` - Remove suspicious/invalid contacts
-- `POST /api/ai/distribute-contacts` - Auto-assign to advisors
-- `GET /api/ai/database-stats` - Get health metrics
-- `POST /api/ai/suggest-improvements` - Get AI recommendations
+### AI & Advisor Endpoints (`/ai`, `/advisors`)
+-   Endpoints for triggering database-wide analysis, contact distribution, managing advisors, etc. (Refer to specific route files like `ai.js`, `advisors.js`).
 
-### Advisor Management
-- `GET /api/advisors` - List all advisors
-- `POST /api/advisors` - Create new advisor
-- `PUT /api/advisors/:id` - Update advisor
-- `GET /api/advisors/:id/performance` - Performance metrics
-- `GET /api/advisors/:id/workload` - Workload analysis
-- `POST /api/advisors/:id/assign-contacts` - Manual assignment
+## 🤖 AI Features in Detail (GeminiService)
 
-### Communication
-- `POST /api/spoof/call` - Make spoof call
-- `POST /api/spoof/sms` - Send SMS
-- `GET /api/spoof/history` - Communication history
+### Contact Quality Scoring (`SCORING_WEIGHTS`)
+The `geminiService.js` uses a weighted system:
+-   `VALID_PHONE`: +30
+-   `VALID_EMAIL`: +20
+-   `COMPLETE_NAME`: +20 (full score for names with space, half otherwise)
+-   `IS_COMPLETE`: +20 (if essential fields like name & valid phone are present)
+-   `OPTIONAL_FIELDS_BONUS`: +10 (example, can be expanded)
+-   `AI_SUSPICION_PENALTY`: -20 (if Gemini AI flags as suspicious or pattern matching is positive)
+The final score is capped between 0 and 100.
 
-## 🤖 AI Features in Detail
+### Suspicious Name Detection
+A list of regex patterns (e.g., `/^test/i`, `/(.)\1{2,}/`) is used for quick flagging.
 
-### Contact Quality Analysis
-The Gemini AI service analyzes each contact across multiple dimensions:
+### Gemini AI Prompting
+A structured JSON-based prompt is sent to Gemini for:
+-   Genuineness assessment (`is_genuine_person`)
+-   Suspicion score and reason (`suspicion_score`, `suspicion_reason`)
+-   Data completeness and accuracy scores
+-   Specific quality issues and recommendations.
 
-- **Phone Validation**: Uses libphonenumber-js + AI verification
-- **Email Validation**: Format and domain validation
-- **Name Analysis**: Detects suspicious patterns (test, demo, fake names)
-- **Completeness Score**: Evaluates required vs optional fields
-- **Suspicious Indicators**: AI-powered fraud detection
+### Contact Distribution Logic
+1.  Contacts: Sorted by `qualityScore` (desc), then `createdAt` (desc).
+2.  Advisors: Filtered for `isActive` and capacity. Sorted by `performanceScore` (desc), then `currentContactCount` (asc).
+3.  Assignment: Iterative, assigning best contacts to best available advisors.
 
-### Quality Scoring Algorithm
-```javascript
-// Base scoring (0-100)
-- Valid phone: +30 points
-- Valid email: +20 points  
-- Complete name: +20 points
-- Data completeness: +20 points
-- Optional fields: +10 points
-- AI confidence boost/penalty: ±20 points
-```
+## 🔒 Security Features (Updated)
 
-### Advisor Assignment Logic
-The AI considers multiple factors for optimal assignment:
-
-- **Performance Score**: Historical success rate
-- **Current Workload**: Available capacity
-- **Contact Priority**: Urgent contacts to top performers
-- **Specialization Match**: Department/skill alignment
-- **Response Time**: Average advisor response metrics
-
-### Database Health Monitoring
-Continuous monitoring provides insights on:
-
-- **Data Quality Distribution**: Excellent/Good/Fair/Poor breakdown
-- **Suspicious Contact Trends**: Fraud detection patterns
-- **Completion Rates**: Missing information analysis
-- **Duplicate Detection**: Phone/email matching algorithms
-
-## 🔒 Security Features
-
-- **Rate Limiting**: API protection against abuse
-- **Input Validation**: Comprehensive data sanitization
-- **SQL Injection Protection**: Parameterized queries
-- **XSS Prevention**: Content Security Policy headers
-- **CORS Configuration**: Controlled cross-origin access
-- **Helmet.js**: Security headers implementation
+-   **Helmet.js**: Provides various security headers (CSP, XSS protection, etc.).
+-   **CORS**: Configurable via `CORS_ORIGIN` for controlled cross-origin access.
+-   **Rate Limiting**: Implemented via `express-rate-limit` (configuration in `middleware/rateLimiter.js`).
+-   **Input Validation**: `express-validator` in controllers (e.g., `twilioController.js`).
+-   **Password Hashing**: `bcrypt` with configurable salt rounds (`BCRYPT_SALT_ROUNDS`).
+-   **SQL Injection Protection**: Via Sequelize ORM's parameterized queries.
+-   **Graceful Shutdown**: Handles termination signals to prevent data corruption or abrupt disconnections.
+-   **Environment Variable Management**: Critical configurations are externalized to `.env` files.
 
 ## 📈 Performance Optimizations
 
-- **Redis Caching**: Frequently accessed data caching
-- **Database Indexing**: Optimized query performance
-- **Compression**: Gzip response compression
-- **Connection Pooling**: Efficient database connections
-- **Lazy Loading**: On-demand data fetching
+-   **Response Compression**: `compression` middleware (gzip).
+-   **Database Indexing**: Defined in Sequelize models for faster queries.
+-   **Connection Pooling**: Managed by Sequelize.
+-   **Efficient Deployment**: `rsync` in `deploy-production.sh`.
+-   **Frontend Optimizations**: DOM caching and robust polling in `spoofCalling.js`.
+-   *(Note: Redis caching was present in an older version, but removed from the current `package.json`. Can be re-added if needed.)*
 
 ## 🧪 Testing
+-   Manual testing of API endpoints using tools like Postman or `curl` is recommended.
+-   `supertest` is included in `devDependencies` for potential future integration tests.
+-   The `deploy-production.sh` script should be tested in a staging environment first.
 
-### API Testing Examples
-
-**Create Contact with AI Analysis:**
+**Example `curl` for sending SMS:**
 ```bash
-curl -X POST http://localhost:3001/api/contacts \
+curl -X POST http://localhost:3001/api/twilio/send-sms \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "María García",
-    "phone": "+525512345678",
-    "email": "maria@example.com",
-    "priority": "High"
+    "to": "+15551234567",
+    "body": "Hello from the CRM!",
+    "from": "+15557654321"
   }'
 ```
 
-**Analyze Database Health:**
+## 🚀 Deployment (Updated `deploy-production.sh`)
+The `deploy-production.sh` script now:
+1.  Performs local checks (e.g., `.env.production`, `rsync` availability).
+2.  Creates a local `dist/` package.
+3.  Uses `rsync -avz --delete` to upload `dist/` to the remote server (efficiently syncing files).
+4.  Connects via SSH to:
+    *   Run `npm ci --omit=dev --legacy-peer-deps` for clean, production-only dependency installation.
+    *   Stop any old application instances using `pkill`.
+    *   Start the application with `nohup node backend/server.js > logs/app.log 2>&1 &`.
+    *   Verify the application process.
+5.  Cleans up the local `dist/` directory.
+
+**Usage**:
 ```bash
-curl -X POST http://localhost:3001/api/ai/analyze-contacts
+chmod +x deploy-production.sh
+./deploy-production.sh [ssh_user] [ssh_host] [remote_path]
+# Arguments are optional if defaults in script are correct.
 ```
-
-**Get Statistics:**
-```bash
-curl -X GET http://localhost:3001/api/contacts/stats/overview
-```
-
-## 🚀 Deployment
-
-### Production Considerations
-
-1. **Environment Variables**: Set production values
-2. **Database**: Use PostgreSQL/MySQL for production
-3. **Redis**: Enable caching for better performance
-4. **SSL/HTTPS**: Secure communication
-5. **Process Management**: Use PM2 or similar
-6. **Monitoring**: Implement logging and alerting
-
-### Docker Deployment (Optional)
-```dockerfile
-FROM node:16-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY . .
-EXPOSE 3001
-CMD ["npm", "start"]
-```
-
-## 🔧 Configuration Options
-
-### Gemini AI Settings
-- **Model Selection**: Choose between gemini-pro models
-- **Analysis Depth**: Configure AI analysis complexity
-- **Confidence Thresholds**: Set suspicious contact detection sensitivity
-- **Rate Limiting**: Manage API usage costs
-
-### Database Options
-- **SQLite**: Default for development
-- **PostgreSQL**: Recommended for production
-- **MySQL**: Alternative production option
-- **Connection Pooling**: Configurable pool sizes
 
 ## 📝 Logging & Monitoring
-
-The system includes comprehensive logging:
-
-- **Structured Logging**: JSON format with Winston
-- **Request Tracking**: All API calls logged
-- **Error Handling**: Detailed error reporting
-- **Performance Metrics**: Response time tracking
-- **AI Analysis Logs**: Decision tracking for auditing
+-   **Winston Logger**: Configured in `utils/logger.js` for structured JSON logs.
+-   **Request Logging**: `server.js` logs details of each incoming request.
+-   **Error Logging**: Global error handlers in `server.js` log unhandled errors. Specific services also log important events and errors.
+-   **Deployment Logs**: `deploy-production.sh` provides console output. Application logs on server at `[remote_path]/logs/app.log`.
 
 ## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Implement changes with tests
-4. Submit a pull request
+Standard fork, feature branch, test, and pull request workflow. Ensure code passes linting (`npm run lint`) and formatting (`npm run format`).
 
 ## 📄 License
-
 This project is licensed under the MIT License.
 
 ## 🆘 Support
-
-For support and questions:
-- Check the API documentation
-- Review the logs for error details
-- Ensure all environment variables are set
-- Verify Gemini API key permissions
+-   Check application logs (server-side and browser console).
+-   Verify all `.env` variables are correctly set and loaded.
+-   Ensure Twilio and Gemini API keys are valid and have necessary permissions.
+-   Consult Twilio/Gemini dashboards for API call errors.
 
 ## 🔮 Future Enhancements
-
-- **Machine Learning Models**: Custom ML for contact scoring
-- **Advanced Analytics**: Predictive contact conversion
-- **Multi-language Support**: International contact handling
-- **Mobile App**: React Native companion app
-- **Webhook Integration**: Real-time external system sync
-- **Advanced Reporting**: Business intelligence dashboards
+-   Re-integrate Redis or another caching layer for high-traffic endpoints.
+-   Develop comprehensive automated tests (unit, integration, e2e).
+-   Implement full JWT-based authentication workflow.
+-   Expand AI capabilities (e.g., sentiment analysis from call transcriptions if available).
+-   User interface for managing `SCORING_WEIGHTS` or AI settings.
 
 ---
 
-**Built with ❤️ using Node.js, Express, Sequelize, Google Gemini AI, and modern web technologies.**
+**Version 3.1.0** - Enhanced with robust services, security, and deployment.
