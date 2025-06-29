@@ -283,15 +283,33 @@ class CRMApp {
         document.getElementById('prompt-cancel-btn').onclick = () => modal.remove();
     }
 
-    loadContacts() {
-        this.contacts = [
-            {id: 1, name: 'Juan Pérez', phone: '+525512345678', email: 'juan@example.com', status: 'Pendiente', notes: 'Interesado en el producto X'},
-            {id: 2, name: 'María García', phone: '+525587654321', email: 'maria@example.com', status: 'Contactado', notes: 'Llamar la próxima semana'},
-            {id: 3, name: 'Carlos López', phone: '+525511223344', email: 'carlos@example.com', status: 'Requiere_Seguimiento', notes: 'Envió propuesta'},
-            {id: 4, name: 'Ana Fernández', phone: '+525544332211', email: 'ana@example.com', status: 'No_Interesado', notes: 'Ya tiene otro proveedor'}
-        ];
-        this.renderContacts();
-        this.updateDashboard();
+    async loadContacts() {
+        this.showToast('Cargando contactos...', 'info');
+        try {
+            const response = await fetch(`${this.baseUrl}/api/contacts`, {
+                headers: {
+                    'Authorization': `Bearer ${this.authToken}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Error ${response.status}: No se pudieron cargar los contactos`);
+            }
+
+            const data = await response.json();
+            this.contacts = data.contacts || []; // Asegurarse de que this.contacts sea un array
+            this.renderContacts();
+            this.updateDashboard();
+            this.showToast('Contactos cargados exitosamente.', 'success');
+        } catch (error) {
+            console.error('Error loading contacts:', error);
+            this.showToast(`Error al cargar contactos: ${error.message}`, 'error');
+            // Mantener la tabla vacía o mostrar un mensaje en la tabla
+            this.contacts = [];
+            this.renderContacts();
+            this.updateDashboard();
+        }
     }
 
     renderContacts(contactsToRender = this.contacts) {
