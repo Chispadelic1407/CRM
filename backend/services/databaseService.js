@@ -25,8 +25,8 @@ class DatabaseService {
                 logger.info('Sincronización de BD omitida (modo producción). Usar migraciones.');
             }
 
-            await this.createDefaultUsers();
-            await this.createDefaultAdvisors(); // Podrías añadir esto si es necesario
+            // await this.createDefaultUsers(); // Eliminado para la lógica de Super Administrador
+            await this.createDefaultAdvisors();
 
         } catch (error) {
             logger.error('No se pudo inicializar la base de datos.', { error: error.message, stack: error.stack });
@@ -260,6 +260,181 @@ class DatabaseService {
     // Otros métodos del servicio (getContactById, deleteContact, getAdvisors, createAdvisor, etc.)
     // Deberían seguir un patrón similar: uso de transacciones para operaciones de escritura,
     // logging adecuado, y manejo de errores.
+
+    /**
+     * Obtiene usuarios con opción de filtrado y paginación.
+     * @param {object} queryParams - Objeto con filtros y opciones de paginación.
+     */
+    async getUsers(queryParams = {}) {
+        // TODO: Implementar filtros (ej. por rol, isActive) y paginación
+        logger.debug('DatabaseService.getUsers_queryParams', queryParams);
+        try {
+            const { page = 1, pageSize = 20, role, isActive, sortBy = 'username', order = 'ASC' } = queryParams;
+            const offset = (parseInt(page, 10) - 1) * parseInt(pageSize, 10);
+            const limit = parseInt(pageSize, 10);
+
+            const whereConditions = {};
+            if (role) whereConditions.role = role;
+            if (isActive !== undefined) whereConditions.isActive = isActive === 'true' || isActive === true;
+
+            const { count, rows } = await User.findAndCountAll({
+                where: whereConditions,
+                attributes: { exclude: ['password'] }, // Nunca devolver contraseñas
+                include: [{ model: Advisor, as: 'advisorProfile', required: false }],
+                limit,
+                offset,
+                order: [[sortBy, order.toUpperCase()]],
+                distinct: true, // Necesario si hay includes que puedan duplicar filas
+            });
+            return {
+                users: rows,
+                totalUsers: count,
+                totalPages: Math.ceil(count / limit),
+                currentPage: parseInt(page, 10)
+            };
+        } catch (error) {
+            logger.error('Error fetching users from database', { error: error.message, queryParams });
+            throw error;
+        }
+    }
+
+    /**
+     * Crea un nuevo usuario.
+     * @param {object} userData - Datos del usuario.
+     */
+    async createUser(userData) {
+        logger.debug('DatabaseService.createUser_userData', userData);
+        const { username, password, role, isActive, advisorId } = userData;
+        try {
+            // El hook beforeCreate en el modelo User se encarga del hasheo de la contraseña.
+            const newUser = await User.create({
+                username,
+                password,
+                role, // Debe ser 'admin' o 'asesor', validado en la ruta
+                isActive: isActive !== undefined ? isActive : true,
+                advisorId: advisorId || null
+            });
+            // Excluir contraseña de la respuesta
+            const userResponse = newUser.toJSON();
+            delete userResponse.password;
+            return userResponse;
+        } catch (error) {
+            logger.error('Error creating user in database', { error: error.message, username, role });
+            throw error; // Dejar que el controlador maneje errores de validación/unicidad
+        }
+    }
+
+    /**
+     * Obtiene un usuario por su ID.
+     * @param {number} userId - ID del usuario.
+     */
+    async getUserById(userId) {
+        logger.debug('DatabaseService.getUserById_userId', userId);
+        try {
+            const user = await User.findByPk(userId, {
+                attributes: { exclude: ['password'] },
+                include: [{ model: Advisor, as: 'advisorProfile', required: false }]
+            });
+            return user; // Devuelve null si no se encuentra, el controlador manejará el 404
+        } catch (error) {
+            logger.error('Error fetching user by ID from database', { error: error.message, userId });
+            throw error;
+        }
+    }
+
+    /**
+     * Actualiza un usuario existente.
+     * @param {number} userId - ID del usuario a actualizar.
+     * @param {object} updateData - Datos a actualizar.
+     */
+    async updateUser(userId, updateData) {
+        logger.debug('DatabaseService.updateUser_updateData', { userId, updateData });
+        const { username, password, role, isActive, advisorId } = updateData;
+        try {
+            const user = await User.findByPk(userId);
+            if (!user) {
+                return null; // Usuario no encontrado, el controlador enviará 404
+            }
+
+            // No permitir cambiar el rol de/a superadmin aquí directamente
+            // o auto-degradación del último superadmin. Esa lógica es más compleja
+            // y podría estar en el controlador o una capa de servicio de negocio.
+            // Por ahora, solo permitimos actualizar ciertos campos.
+            if (role && (user.role === 'superadmin' || role === 'superadmin')) {
+                // Podríamos lanzar un error o simplemente ignorar el cambio de rol para superadmins
+                logger.warn(`Attempt to change role of/to superadmin for user ${userId} ignored in basic updateUser.`);
+                delete updateData.role;
+            }
+
+
+            // El hook beforeUpdate en User.js se encarga de hashear la contraseña si cambia.
+            await user.update(updateData);
+
+            const updatedUserResponse = user.toJSON();
+            delete updatedUserResponse.password;
+            return updatedUserResponse;
+        } catch (error) {
+            logger.error('Error updating user in database', { error: error.message, userId });
+            throw error;
+        }
+    }
+
+    /**
+     * Elimina un usuario (soft delete o hard delete).
+     * Por ahora, implementaremos un hard delete.
+     * Se necesita lógica adicional para prevenir la auto-eliminación del superadmin
+     * o la eliminación del último superadmin.
+     * @param {number} userId - ID del usuario a eliminar.
+     * @param {object} performingUser - El usuario que realiza la acción (para comprobaciones de seguridad)
+     */
+    async deleteUser(userId, performingUser) {
+        logger.debug('DatabaseService.deleteUser_userId', { userId, performingUser });
+
+        if (performingUser && parseInt(userId, 10) === performingUser.userId) {
+            const selfDeleteError = new Error('Users cannot delete themselves.');
+            selfDeleteError.statusCode = 403; // Forbidden
+            throw selfDeleteError;
+        }
+
+        const transaction = await sequelize.transaction();
+        try {
+            const user = await User.findByPk(userId, { transaction });
+            if (!user) {
+                await transaction.rollback();
+                return false; // O lanzar un error "not found"
+            }
+
+            // Prevenir la eliminación del último superadmin
+            if (user.role === 'superadmin') {
+                const superAdminCount = await User.count({ where: { role: 'superadmin' }, transaction });
+                if (superAdminCount <= 1) {
+                    await transaction.rollback();
+                    const lastSuperAdminError = new Error('Cannot delete the last superadmin.');
+                    lastSuperAdminError.statusCode = 403;
+                    throw lastSuperAdminError;
+                }
+            }
+
+            // Si el usuario es un asesor, desvincularlo de los contactos asignados
+            if (user.role === 'asesor' && user.advisorId) {
+                 await Contact.update({ assignedAdvisorId: null }, {
+                    where: { assignedAdvisorId: user.advisorId },
+                    transaction
+                });
+                // También podrías querer desactivar o eliminar el perfil de Asesor asociado
+                // await Advisor.destroy({ where: { id: user.advisorId }, transaction });
+            }
+
+
+            await user.destroy({ transaction });
+            await transaction.commit();
+            return true;
+        } catch (error) {
+            await transaction.rollback();
+            logger.error('Error deleting user from database', { error: error.message, userId });
+            throw error;
+        }
+    }
 }
 
 module.exports = DatabaseService;

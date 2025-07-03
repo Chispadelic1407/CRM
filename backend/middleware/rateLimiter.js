@@ -58,8 +58,30 @@ const smsLimiter = rateLimit({
     }
 });
 
+    smsLimiter
+};
+
+// Stricter rate limiter for login attempts
+const loginLimiter = rateLimit({
+    windowMs: parseInt(process.env.LOGIN_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
+    max: parseInt(process.env.LOGIN_RATE_LIMIT_MAX_REQUESTS) || 10, // Limit each IP to 10 login requests per windowMs
+    message: {
+        error: 'Too many login attempts from this IP, please try again after 15 minutes.',
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+    skipSuccessfulRequests: true, // Don't count successful logins towards the rate limit
+    handler: (req, res, /*next, options*/) => {
+        logger.warn(`Login rate limit exceeded for IP: ${req.ip} to path: ${req.path}`);
+        res.status(429).json({
+            error: 'Too many login attempts from this IP, please try again after 15 minutes.',
+        });
+    }
+});
+
 module.exports = {
     apiLimiter,
     callLimiter,
-    smsLimiter
+    smsLimiter,
+    loginLimiter
 };

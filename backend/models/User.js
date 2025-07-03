@@ -27,7 +27,7 @@ module.exports = (sequelize) => {
             }
         },
         role: {
-            type: DataTypes.ENUM('admin', 'asesor'),
+            type: DataTypes.ENUM('admin', 'asesor', 'superadmin'),
             defaultValue: 'asesor'
         },
         advisorId: { // Enlace opcional a un perfil de asesor
@@ -39,6 +39,10 @@ module.exports = (sequelize) => {
         isActive: {
             type: DataTypes.BOOLEAN,
             defaultValue: true
+        },
+        lastLogin: {
+            type: DataTypes.DATE,
+            allowNull: true
         }
         // otros campos de seguridad
     }, {

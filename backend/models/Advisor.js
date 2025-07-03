@@ -33,6 +33,22 @@ module.exports = (sequelize) => {
         maxContacts: {
             type: DataTypes.INTEGER,
             defaultValue: 50
+        },
+        phone: {
+            type: DataTypes.STRING,
+            allowNull: true // O false si es mandatorio
+        },
+        department: {
+            type: DataTypes.STRING,
+            allowNull: true
+        },
+        specialties: { // Podría ser ARRAY(DataTypes.STRING) si el dialecto lo soporta bien y es preferido
+            type: DataTypes.JSON,
+            allowNull: true
+        },
+        workingHours: { // e.g., { "monday": "9-5", "tuesday": "9-5" }
+            type: DataTypes.JSON,
+            allowNull: true
         }
         //... otros campos de rendimiento
     }, {

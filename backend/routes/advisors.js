@@ -3,13 +3,14 @@ const router = express.Router();
 const DatabaseService = require('../services/databaseService');
 const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
+const { authenticateToken, requireAdmin } = require('./auth'); // Importar middlewares
 
 const databaseService = new DatabaseService();
 
 /**
  * Get all advisors with their contact assignments
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const advisors = await databaseService.getAdvisors();
         
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 /**
  * Get specific advisor by ID
  */
-router.get('/:advisorId', async (req, res) => {
+router.get('/:advisorId', authenticateToken, async (req, res) => {
     try {
         const { advisorId } = req.params;
         
@@ -64,7 +65,7 @@ router.get('/:advisorId', async (req, res) => {
 /**
  * Create new advisor
  */
-router.post('/', [
+router.post('/', authenticateToken, requireAdmin, [
     body('name').notEmpty().withMessage('Name is required').isLength({ min: 2, max: 100 }),
     body('email').isEmail().withMessage('Valid email is required'),
     body('phone').notEmpty().withMessage('Phone is required'),
@@ -123,7 +124,7 @@ router.post('/', [
 /**
  * Update advisor
  */
-router.put('/:advisorId', [
+router.put('/:advisorId', authenticateToken, requireAdmin, [
     body('name').optional().isLength({ min: 2, max: 100 }),
     body('email').optional().isEmail(),
     body('phone').optional().notEmpty(),
@@ -184,7 +185,7 @@ router.put('/:advisorId', [
 /**
  * Delete advisor (soft delete - set as inactive)
  */
-router.delete('/:advisorId', async (req, res) => {
+router.delete('/:advisorId', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { advisorId } = req.params;
         
@@ -218,7 +219,7 @@ router.delete('/:advisorId', async (req, res) => {
 /**
  * Get advisor performance metrics
  */
-router.get('/:advisorId/performance', async (req, res) => {
+router.get('/:advisorId/performance', authenticateToken, async (req, res) => {
     try {
         const { advisorId } = req.params;
         
@@ -276,7 +277,7 @@ router.get('/:advisorId/performance', async (req, res) => {
 /**
  * Get advisor workload distribution
  */
-router.get('/:advisorId/workload', async (req, res) => {
+router.get('/:advisorId/workload', authenticateToken, async (req, res) => {
     try {
         const { advisorId } = req.params;
         
@@ -346,7 +347,7 @@ router.get('/:advisorId/workload', async (req, res) => {
 /**
  * Assign contacts to advisor
  */
-router.post('/:advisorId/assign-contacts', [
+router.post('/:advisorId/assign-contacts', authenticateToken, requireAdmin, [
     body('contactIds').isArray().withMessage('Contact IDs must be an array'),
     body('contactIds.*').isInt().withMessage('Each contact ID must be an integer')
 ], async (req, res) => {

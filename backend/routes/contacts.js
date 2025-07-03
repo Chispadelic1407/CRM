@@ -4,13 +4,14 @@ const DatabaseService = require('../services/databaseService');
 const { sequelize } = require('../models');
 const logger = require('../utils/logger');
 const { body, validationResult } = require('express-validator');
+const { authenticateToken, requireAdmin } = require('./auth'); // Importar middlewares
 
 const databaseService = new DatabaseService();
 
 /**
  * Get all contacts with filtering options
  */
-router.get('/', async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
     try {
         const filters = {
             status: req.query.status,
@@ -45,7 +46,7 @@ router.get('/', async (req, res) => {
 /**
  * Get specific contact by ID
  */
-router.get('/:contactId', async (req, res) => {
+router.get('/:contactId', authenticateToken, async (req, res) => {
     try {
         const { contactId } = req.params;
         
@@ -77,11 +78,11 @@ router.get('/:contactId', async (req, res) => {
 /**
  * Create new contact with AI analysis
  */
-router.post('/', [
+router.post('/', authenticateToken, requireAdmin, [
     body('name').notEmpty().withMessage('Name is required').isLength({ min: 2, max: 100 }),
     body('phone').notEmpty().withMessage('Phone is required'),
     body('email').optional().isEmail().withMessage('Invalid email format'),
-    body('status').optional().isIn(['Nuevo', 'Contactado', 'Requiere_Seguimiento', 'No_Interesado', 'Convertido']),
+    body('status').optional().isIn(['New', 'Contacted', 'FollowUp', 'Not Interested', 'Converted']),
     body('notes').optional().isString(),
     body('source').optional().isString(),
     body('priority').optional().isIn(['Low', 'Medium', 'High', 'Urgent'])
@@ -136,11 +137,11 @@ router.post('/', [
 /**
  * Update contact with re-analysis
  */
-router.put('/:contactId', [
+router.put('/:contactId', authenticateToken, requireAdmin, [
     body('name').optional().isLength({ min: 2, max: 100 }),
     body('phone').optional().notEmpty(),
     body('email').optional().isEmail(),
-    body('status').optional().isIn(['Nuevo', 'Contactado', 'Requiere_Seguimiento', 'No_Interesado', 'Convertido']),
+    body('status').optional().isIn(['New', 'Contacted', 'FollowUp', 'Not Interested', 'Converted']),
     body('notes').optional().isString(),
     body('source').optional().isString(),
     body('priority').optional().isIn(['Low', 'Medium', 'High', 'Urgent']),
@@ -196,7 +197,7 @@ router.put('/:contactId', [
 /**
  * Delete contact
  */
-router.delete('/:contactId', async (req, res) => {
+router.delete('/:contactId', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const { contactId } = req.params;
         
@@ -228,7 +229,7 @@ router.delete('/:contactId', async (req, res) => {
 /**
  * Bulk create contacts with AI analysis
  */
-router.post('/bulk', [
+router.post('/bulk', authenticateToken, requireAdmin, [
     body('contacts').isArray().withMessage('Contacts must be an array'),
     body('contacts.*.name').notEmpty().withMessage('Name is required for each contact'),
     body('contacts.*.phone').notEmpty().withMessage('Phone is required for each contact'),
@@ -292,7 +293,7 @@ router.post('/bulk', [
 /**
  * Search contacts
  */
-router.get('/search/:query', async (req, res) => {
+router.get('/search/:query', authenticateToken, async (req, res) => {
     try {
         const { query } = req.params;
         
@@ -333,7 +334,7 @@ router.get('/search/:query', async (req, res) => {
 /**
  * Get contact statistics
  */
-router.get('/stats/overview', async (req, res) => {
+router.get('/stats/overview', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const stats = await databaseService.getStatistics();
         
@@ -355,7 +356,7 @@ router.get('/stats/overview', async (req, res) => {
 /**
  * Export contacts (JSON format)
  */
-router.get('/export/json', async (req, res) => {
+router.get('/export/json', authenticateToken, requireAdmin, async (req, res) => {
     try {
         const filters = {
             status: req.query.status,
@@ -410,9 +411,9 @@ router.get('/export/json', async (req, res) => {
 /**
  * Update contact status and add interaction log
  */
-router.post('/:contactId/interaction', [
+router.post('/:contactId/interaction', authenticateToken, requireAdmin, [
     body('type').isIn(['call', 'sms', 'email', 'meeting']).withMessage('Invalid interaction type'),
-    body('status').optional().isIn(['Nuevo', 'Contactado', 'Requiere_Seguimiento', 'No_Interesado', 'Convertido']),
+    body('status').optional().isIn(['New', 'Contacted', 'FollowUp', 'Not Interested', 'Converted']),
     body('notes').optional().isString(),
     body('outcome').optional().isString()
 ], async (req, res) => {
