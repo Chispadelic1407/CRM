@@ -1,212 +1,172 @@
-# 🚀 Deployment Summary - CRM Twilio Production - v3.1.0
+# 🚀 Resumen de Despliegue - CRM Twilio Producción - v3.2.0
 
-## ✅ Completed Tasks (Post-Gemini Optimizations Integration)
+## ✅ Tareas Completadas (Post-Implementación Super Administrador y Mejoras de Seguridad)
 
-### 1. **Repository Cleanup** (Previously Done)
-- ✅ Removed unnecessary Vercel configuration files, old scripts, SQLite files, redundant documentation.
+### 1. **Gestión de Usuarios y Roles (Nuevo y Mejorado)**
+- ✅ **Rol de Super Administrador:** Implementado con capacidad para gestionar otros usuarios (administradores y asesores).
+- ✅ **Flujo de Setup Inicial:** Interfaz de frontend y endpoint de backend (`/api/auth/setup-superadmin`) para la creación del primer superadministrador en una instalación nueva.
+- ✅ **API de Gestión de Usuarios:** Endpoints CRUD (`/api/users/*`) protegidos para que solo el superadmin pueda operar.
+- ✅ **UI de Gestión de Usuarios:** Interfaz en el frontend para que el superadmin liste, cree, edite y elimine usuarios.
+- ✅ **Modelo `User` Actualizado:** Añadido rol `superadmin` y campo `lastLogin`.
+- ✅ Eliminada la creación de usuarios por defecto (ej. 'Chispadelic') para dar paso al setup del superadmin.
 
-### 2. **Database Migration & Model Enhancements**
-- ✅ Migrated from SQLite to MariaDB (as per original setup).
-- ✅ **Enhanced Sequelize Models (`User`, `Contact`, `Advisor`):**
-    - Added more fields, robust validations (strong passwords, phone number formats).
-    - Implemented hooks for password hashing, phone normalization, username to lowercase.
-    - Defined associations and optimized database indexes.
-- ✅ **Dynamic Model Loading**: `models/index.js` updated for dynamic loading and environment variable checks.
-- ✅ Updated Sequelize configuration with proper connection pooling, charset, and collation.
+### 2. **Seguridad y Autenticación (Mejorado)**
+- ✅ **Autenticación JWT Robusta:** El frontend ahora se autentica correctamente contra el backend.
+- ✅ **Autorización Basada en Roles (RBAC):**
+    - Middleware `requireSuperAdmin` para rutas de gestión de usuarios.
+    - Middleware `requireAdmin` corregido para incluir también a `superadmin`, protegiendo rutas de gestión de contactos y asesores.
+- ✅ **Rate Limiting Mejorado:**
+    - `loginLimiter` específico y más estricto para el endpoint de login.
+    - `apiLimiter` general para otras rutas API.
+- ✅ **Manejo de Token en Frontend:** Mejorado para desloguear al usuario en caso de errores 401/403.
+- ✅ Eliminadas credenciales hardcodeadas del frontend.
 
-### 3. **Environment Configuration**
-- ✅ Created secure `.env` template and `.env.production` (excluded from git).
-- ✅ Added new environment variables: `BCRYPT_SALT_ROUNDS`, `API_PREFIX`, `CORS_ORIGIN`, `VOICE_WEBHOOK_URL`.
-- ✅ Updated `.gitignore` for sensitive files.
+### 3. **Modelos de Base de Datos y Servicios (Actualizado)**
+- ✅ **Modelos `Contact` y `Advisor` Actualizados:**
+    - `Contact`: Añadidos campos `lastContactDate`, `contactCount`. Estandarizados los valores de `status`.
+    - `Advisor`: Añadidos campos `phone`, `department`, `specialties`, `workingHours`.
+- ✅ **`DatabaseService` Extendido:** Añadidos métodos CRUD para usuarios, con lógica de negocio (ej. no auto-eliminación de superadmin).
+- ✅ Mantenida la estructura para futuras integraciones con IA (Gemini) y Comunicaciones (Twilio).
 
-### 4. **Production Dependencies & Backend Logic**
-- ✅ Updated `package.json` to v3.1.0, reviewed dependencies, added `eslint`, `prettier`, `supertest`.
-- ✅ **Refactored Services (`geminiService.js`, `databaseService.js`):**
-    - `geminiService`: Implemented `SCORING_WEIGHTS`, detailed contact analysis logic, improved AI prompting, enhanced suspicious name detection.
-    - `databaseService`: Integrated Sequelize transactions, improved DB initialization (default users/advisors), deeper integration with `geminiService`.
-- ✅ **Modularized Controllers & Routes:**
-    - Created `twilioController.js` with `express-validator`.
-    - Renamed `spoofCalling.js` to `routes/twilio.js` and updated to use new controllers.
-- ✅ **Enhanced `server.js`:**
-    - Added `helmet` (with CSP) and `compression`.
-    - Improved CORS configuration (from `CORS_ORIGIN`).
-    - Implemented `gracefulShutdown`, better error handling, standardized `/api` prefix.
-    - Refined static file serving for frontend SPA.
+### 4. **Frontend (Mejorado)**
+- ✅ **Lógica de Autenticación Corregida:** Comunicación con endpoints reales del backend.
+- ✅ **Configuración de `baseUrl` Centralizada:** Uso de `config.js` para la URL base de la API.
+- ✅ Interfaz adaptada para mostrar/ocultar elementos según el rol del usuario (superadmin, admin).
 
-### 5. **Deployment Infrastructure & Script**
-- ✅ **Upgraded `deploy-production.sh` script:**
-    - Uses `rsync` for efficient file packaging and transfer (with `--delete`).
-    - Installs production dependencies on server using `npm ci --omit=dev --legacy-peer-deps`.
-    - Improved application stop/start logic (`pkill`, `nohup`, process verification).
-    - Enhanced logging and pre-deployment checks.
-- ✅ Configured SFTP upload automation (as part of rsync over SSH).
+### 5. **Documentación (Actualizada)**
+- ✅ `README.md` y `MANUAL_DE_USO.md` actualizados al español y reflejando las nuevas funcionalidades y estructura.
+- ✅ Este `DEPLOYMENT_SUMMARY.md` está siendo actualizado.
 
-### 6. **Frontend Enhancements**
-- ✅ **Optimized `frontend/js/spoofCalling.js`:**
-    - Implemented DOM element caching.
-    - Added event delegation for dynamic elements.
-    - Developed a more robust polling mechanism using recursive `setTimeout`.
-    - Updated API call URLs to align with backend changes.
-
-### 7. **Documentation Updates**
-- ✅ Updated `MANUAL_DE_USO.md` reflecting new AI features, scoring, deployment.
-- ✅ Updated `README.md` with new architecture, env vars, AI features, security, deployment.
-- ✅ This `DEPLOYMENT_SUMMARY.md` is being updated.
+### 6. **Configuración de Entorno y Despliegue (Consistente)**
+- ✅ Mantenido el uso de `.env` y `.env.production` para la configuración.
+- ✅ Script `deploy-production.sh` sigue siendo el método principal para despliegue, usando `rsync` y `npm ci`.
 
 ---
 
-## 🎯 Production Configuration (Remains Consistent)
+## 🎯 Configuración de Producción (Consistente con v3.1.0, verificar `.env.production`)
 
-### **Target Server**
+### **Servidor Objetivo**
 - **Host**: `access-5018020518.webspace-host.com`
-- **User**: `a951193`
-- **Path**: `/home/a951193/crm-twilio` (Absolute path for `REMOTE_PATH` in deploy script)
-- **Application Port**: `3001` (Set by `PORT` env var)
+- **Usuario**: `a951193`
+- **Ruta**: `/home/a951193/crm-twilio` (Ruta absoluta para `REMOTE_PATH` en el script de despliegue)
+- **Puerto de Aplicación**: `3001` (Configurado por variable `PORT`)
 
-### **Database Configuration**
-- **Type**: MariaDB (using `mysql2` driver)
-- **Host**: `db5018065428.hosting-data.io` (Set by `DB_HOST`)
-- **Database**: `dbu2025297` (Set by `DB_NAME`)
-- **User**: `dbu2025297` (Set by `DB_USER`)
+### **Configuración de Base de Datos (MariaDB)**
+- **Host**: `db5018065428.hosting-data.io` (Configurado por `DB_HOST`)
+- **Base de Datos**: `dbu2025297` (Configurado por `DB_NAME`)
+- **Usuario**: `dbu2025297` (Configurado por `DB_USER`)
+*(Contraseña y otros detalles deben estar en `.env.production`)*
 
-### **API Integrations**
-- **Twilio**: Configured for SMS and voice calls via `twilioService.js`.
-- **Google Gemini AI**: Integrated for contact analysis via `geminiService.js`.
-- **Spoof Calling**: Enabled, using `spoofNumber` parameter in make-call API.
+### **Integraciones API (Potencial)**
+- **Twilio**: Configurable para SMS y llamadas de voz.
+- **Google Gemini AI**: Configurable para análisis de contactos.
 
 ---
 
-## 🚀 Deployment Instructions (Using Updated Script)
+## 🚀 Instrucciones de Despliegue (Usando Script Actualizado)
 
-### **Prerequisites**
-1. SSH access to the production server for the specified user.
-2. `.env.production` file in the project root with actual production credentials.
-3. Node.js (>=18.0.0) and npm installed on the target server.
-4. `rsync` installed locally.
+### **Prerrequisitos**
+1.  Acceso SSH al servidor de producción.
+2.  Archivo `.env.production` en la raíz del proyecto local con las credenciales y configuraciones de producción (¡incluyendo un `JWT_SECRET` fuerte!).
+3.  Node.js (>=18.0.0) y npm instalados en el servidor objetivo.
+4.  `rsync` instalado localmente.
+5.  PM2 (o similar) instalado en el servidor para gestionar el proceso Node.js (el script `deploy-production.sh` usa PM2).
 
-### **Deployment Steps**
+### **Pasos de Despliegue**
 ```bash
-# 1. Make deployment script executable (if not already)
+# 1. Dar permisos de ejecución al script (si es la primera vez)
 chmod +x deploy-production.sh
 
-# 2. Run deployment script (arguments are optional if defaults in script are correct)
-# ./deploy-production.sh [ssh_user] [ssh_host] [remote_path_absolute]
-# Example using defaults from script:
+# 2. Ejecutar el script de despliegue
+# (Los argumentos son opcionales si los valores por defecto en el script son correctos para tu entorno)
+# ./deploy-production.sh [usuario_ssh] [host_ssh] [ruta_remota_absoluta]
+# Ejemplo usando los valores por defecto (si están configurados en el script):
 ./deploy-production.sh
 ```
 
-### **Verification**
-1. Check application status: `https://access-5018020518.webspace-host.com:3001` (or your configured domain/port).
-2. Monitor application logs on the server: `/home/a951193/crm-twilio/logs/app.log`.
-3. Verify database connectivity through application actions.
-4. Test key API endpoints (e.g., contact creation, SMS, call).
+### **Verificación Post-Despliegue**
+1.  **Primer Despliegue (Instancia Nueva):**
+    *   Accede a la URL de la aplicación (ej. `https://tu-dominio.com` o `http://ip_servidor:PUERTO`).
+    *   Deberías ver la pantalla de "Configurar Super Administrador". Procede a crear la cuenta.
+    *   Luego, inicia sesión con esta nueva cuenta.
+2.  **Despliegues Posteriores (Actualizaciones):**
+    *   Accede a la URL de la aplicación y verifica que los cambios se hayan aplicado.
+    *   Prueba las funcionalidades clave.
+3.  **Monitoreo de Logs**:
+    *   En el servidor: `/home/a951193/crm-twilio/logs/app.log` (o la ruta configurada).
+    *   Con PM2: `pm2 logs [nombre_app_o_id]`.
+4.  Verifica la conectividad con la base de datos y APIs externas (si están configuradas).
 
 ---
 
-## 📋 System Features (Post-Update)
+## 📋 Funcionalidades del Sistema (v3.2.0)
 
-### **Core Functionality**
-- ✅ Contact Management (CRUD) with enhanced validation and normalization.
-- ✅ Advisor Management with performance/capacity tracking and AI-driven assignment.
-- ✅ Twilio Integration for calls (including spoofing) and SMS, with modular controllers.
-- ✅ **Advanced AI-powered contact quality analysis (Gemini)**: Scoring, pattern detection, AI suspicion.
-- ✅ User authentication and authorization (structure in place, JWT can be added).
+### **Núcleo y Gestión**
+- ✅ Gestión completa de Contactos (CRUD) con validación y normalización.
+- ✅ Gestión completa de Asesores (CRUD) con seguimiento de capacidad.
+- ✅ **Gestión de Usuarios (CRUD) por Super Administrador.**
+- ✅ Autenticación de usuarios basada en JWT y autorización por roles (Superadmin, Admin, Asesor).
+- ✅ Setup inicial seguro del primer Super Administrador.
 
-### **Advanced Platform Features**
-- ✅ Intelligent contact distribution logic using AI insights.
-- ✅ Real-time phone number validation (`libphonenumber-js`).
-- ✅ Comprehensive and structured logging (Winston).
-- ✅ API rate limiting.
-- ✅ **Enhanced Security**: `helmet` (CSP), robust CORS, `gracefulShutdown`.
-- ✅ Frontend interaction improvements for spoof calling UI.
-
-### **Security Measures**
-- ✅ Environment variable protection (`.env.production`).
-- ✅ Input validation (`express-validator`).
-- ✅ Rate limiting on API endpoints.
-- ✅ Secure password hashing (bcrypt with configurable salt rounds).
-- ✅ JWT token authentication (structure ready for full implementation).
-- ✅ **Content Security Policy** via Helmet.
+### **Características Avanzadas de Plataforma**
+- ✅ (Potencial) Análisis de calidad de contactos y asignación inteligente a asesores (bases sentadas).
+- ✅ (Potencial) Integración con Twilio para llamadas (incluyendo spoofing) y SMS.
+- ✅ Logging estructurado y detallado (Winston).
+- ✅ Rate limiting en API para seguridad.
+- ✅ Seguridad mejorada: `helmet` (CSP), CORS robusto, `gracefulShutdown`.
 
 ---
 
-## 👥 User Access (Unchanged from previous state)
-
-### **Administrator Accounts**
-- **Chispadelic** / Svernis1Password! (admin)
-- **Kimbowimbo** / corazonKPassword! (admin)
-
-### **Advisor Accounts**
-- **Rafurioso** / Miau1234* (asesor)
-- **Wero** / Miau1234* (asesor)
-*Passwords now validated for strength upon creation/update.*
-
----
-
-## 🔧 Technical Stack (Key Components)
+## 🔧 Pila Tecnológica (Componentes Clave)
 
 ### **Backend**
-- Node.js (>=18.0.0) with Express.js framework
-- Sequelize ORM with MariaDB (via `mysql2` driver)
-- Winston for logging
-- Helmet for security headers
-- `express-validator` for input validation
-- `compression` for response optimization
+- Node.js (>=18.0.0) con Express.js
+- Sequelize ORM con MariaDB (vía `mysql2`)
+- Winston (logging), Helmet (seguridad), `express-validator` (validación), `compression` (optimización)
+- `jsonwebtoken` (autenticación), `bcrypt` (hashing de contraseñas)
 
 ### **Frontend**
-- HTML5, CSS3, JavaScript (dynamic updates for spoof calling UI)
+- HTML5, CSS3, JavaScript vainilla
 
-### **External Services**
-- Twilio for Communications (SMS/Voice)
-- Google Gemini AI for Contact Analysis
-
----
-
-## 📊 Performance Optimizations
-- ✅ Database connection pooling (Sequelize).
-- ✅ Query optimization with indexes in models.
-- ✅ **Response compression** (gzip via `compression` middleware).
-- ✅ **Efficient deployment** with `rsync`.
-- ✅ **Frontend DOM caching** and improved polling in `spoofCalling.js`.
+### **Servicios Externos (Potencial)**
+- Twilio (Comunicaciones)
+- Google Gemini AI (Análisis)
 
 ---
 
-## 🛠 Maintenance
+## 🛠 Mantenimiento
 
-### **Monitoring**
-- Application logs in `[REMOTE_PATH]/logs/app.log` (e.g., `/home/a951193/crm-twilio/logs/app.log`).
-- Database performance monitoring (via hosting provider or DB tools).
-- API response time tracking (can be added via APM tools).
+### **Monitoreo**
+- Logs de aplicación en `[RUTA_REMOTA]/logs/app.log`.
+- Monitoreo de base de datos y rendimiento de API (según herramientas disponibles).
 
-### **Backup Strategy**
-- Database backups (typically handled by hosting provider, verify).
-- Application code versioning via Git.
-- Secure backup of `.env.production` variables.
+### **Estrategia de Backup**
+- Backups regulares de la base de datos (responsabilidad del administrador de la BD/hosting).
+- Código fuente versionado con Git.
+- Backup seguro de variables de entorno de producción (`.env.production`).
 
-### **Updates**
-- Use Git for managing code changes.
-- Re-run `deploy-production.sh` to deploy updates. This will handle dependency installation (`npm ci`) and application restart.
-
----
-
-## 🎉 Deployment Status
-
-**Status**: ✅ **READY FOR DEPLOYMENT (v3.1.0)**
-
-The CRM Twilio system has been successfully refactored and enhanced. Key improvements are integrated, and the deployment script is updated for a more robust process.
-
-**Deployment Package**: No single `.tar.gz` is generated by the new script; `rsync` handles direct synchronization of the `dist/` directory contents.
-
-**Deployment Method**:
-- **Primary**: Automated SSH and `rsync` deployment via `./deploy-production.sh`.
-
-**Next Steps**:
-1. Ensure prerequisites for `deploy-production.sh` are met (SSH access, `.env.production`, local `rsync`).
-2. Execute `./deploy-production.sh` targeting the production server.
-3. Thoroughly verify system functionality and monitor logs post-deployment.
+### **Actualizaciones**
+- Usar Git para gestionar cambios en el código.
+- Re-ejecutar `deploy-production.sh` para desplegar actualizaciones.
 
 ---
 
-*Deployment Summary Updated By: Jules (AI Software Engineer)*
-*Date: July 2024*
-*Version: 3.1.0*
+## 🎉 Estado del Despliegue
+
+**Estado**: ✅ **LISTO PARA DESPLIEGUE (v3.2.0)**
+
+El sistema CRM ha sido significativamente mejorado con la funcionalidad de Super Administrador, un sistema de roles robusto, y numerosas mejoras de seguridad y estructura. El script de despliegue está preparado.
+
+**Método de Despliegue**:
+- Automatizado vía SSH y `rsync` usando `./deploy-production.sh`.
+
+**Próximos Pasos**:
+1.  Asegurar que los prerrequisitos para `deploy-production.sh` se cumplen.
+2.  Ejecutar `./deploy-production.sh` apuntando al servidor de producción.
+3.  Verificar exhaustivamente la funcionalidad del sistema y monitorear logs post-despliegue, incluyendo el flujo de creación del primer superadministrador.
+
+---
+
+*Resumen de Despliegue Actualizado Por: Jules (Ingeniero de Software AI)*
+*Fecha: [Fecha Actual]*
+*Versión: 3.2.0*

@@ -1,263 +1,244 @@
-# Manual de Uso - Sistema CRM con Integración Twilio y Gemini AI
+# Manual de Usuario - Sistema CRM Avanzado v3.2.0
 
 ## Índice
 1. [Introducción](#introducción)
-2. [Características Principales](#características-principales)
-3. [Acceso al Sistema](#acceso-al-sistema)
-4. [Interfaz de Usuario](#interfaz-de-usuario)
-5. [Gestión de Contactos](#gestión-de-contactos)
-   - [Análisis de Calidad del Contacto](#análisis-de-calidad-del-contacto)
-6. [Sistema de Llamadas y SMS](#sistema-de-llamadas-y-sms)
-7. [Gestión de Asesores](#gestión-de-asesores)
-   - [Distribución Inteligente de Contactos](#distribución-inteligente-de-contactos)
-8. [Configuración Avanzada](#configuración-avanzada)
-9. [Despliegue y Mantenimiento](#despliegue-y-mantenimiento)
-10. [Solución de Problemas](#solución-de-problemas)
+2. [Acceso al Sistema](#acceso-al-sistema)
+   - [Configuración Inicial (Primer Uso)](#configuración-inicial-primer-uso)
+   - [Inicio de Sesión Regular](#inicio-de-sesión-regular)
+3. [Interfaz Principal](#interfaz-principal)
+   - [Navegación y Componentes Comunes](#navegación-y-componentes-comunes)
+4. [Gestión de Usuarios (Solo Super Administrador)](#gestión-de-usuarios-solo-super-administrador)
+   - [Acceder a la Gestión de Usuarios](#acceder-a-la-gestión-de-usuarios)
+   - [Listar Usuarios](#listar-usuarios)
+   - [Crear un Nuevo Usuario](#crear-un-nuevo-usuario)
+   - [Editar un Usuario Existente](#editar-un-usuario-existente)
+   - [Eliminar un Usuario](#eliminar-un-usuario)
+5. [Gestión de Contactos (Administradores y Super Administradores)](#gestión-de-contactos-administradores-y-super-administradores)
+   - [Ver Lista de Contactos](#ver-lista-de-contactos)
+   - [Crear un Nuevo Contacto](#crear-un-nuevo-contacto)
+   - [Buscar y Filtrar Contactos](#buscar-y-filtrar-contactos)
+   - [Editar un Contacto](#editar-un-contacto)
+   - [Eliminar un Contacto](#eliminar-un-contacto)
+   - [Registrar Interacción con Contacto](#registrar-interacción-con-contacto)
+   - [Exportar Contactos](#exportar-contactos)
+6. [Gestión de Asesores (Administradores y Super Administradores)](#gestión-de-asesores-administradores-y-super-administradores)
+   - [Ver Lista de Asesores](#ver-lista-de-asesores)
+   - [Crear un Nuevo Asesor](#crear-un-nuevo-asesor)
+   - [Editar un Asesor](#editar-un-asesor)
+   - [Desactivar un Asesor](#desactivar-un-asesor)
+   - [Ver Rendimiento y Carga de Trabajo](#ver-rendimiento-y-carga-de-trabajo)
+   - [Asignar Contactos a un Asesor](#asignar-contactos-a-un-asesor)
+7. [Funcionalidades para Asesores](#funcionalidades-para-asesores)
+   - [Visualizar Contactos Asignados](#visualizar-contactos-asignados)
+   - [Interactuar con Contactos (Llamadas/SMS - Potencial)](#interactuar-con-contactos-llamadasSMS-potencial)
+8. [Configuración de API (Administradores y Super Administradores)](#configuración-de-api-administradores-y-super-administradores)
+9. [Solución de Problemas Básicos](#solución-de-problemas-básicos)
 
 ---
 
-## Introducción
+## 1. Introducción
 
-El Sistema CRM con Integración Twilio y Gemini AI es una plataforma de vanguardia para la gestión de relaciones con clientes. Optimiza las operaciones de ventas y atención mediante el uso de inteligencia artificial para el análisis de contactos, la automatización de comunicaciones y la asignación eficiente de tareas a asesores.
+Bienvenido al Manual de Usuario del Sistema CRM Avanzado v3.2.0. Esta guía te ayudará a comprender y utilizar las funcionalidades clave de la aplicación, desde el acceso inicial y la configuración del superadministrador hasta la gestión diaria de usuarios, contactos y asesores.
 
-### Tecnologías Utilizadas
-- **Backend**: Node.js con Express.js
-- **Base de Datos**: MariaDB (o MySQL compatible)
-- **Servicios de Comunicación**: Twilio (SMS/Voz)
-- **Inteligencia Artificial**: Google Gemini AI para análisis y scoring.
-- **Frontend**: HTML5, CSS3, JavaScript (con enfoque en la interacción dinámica para funciones como Spoof Calling).
+Este sistema está diseñado para ser una herramienta robusta y segura para la administración de relaciones con clientes, con una arquitectura que permite futuras expansiones como integraciones con IA y servicios de comunicación.
 
 ---
 
-## Características Principales
+## 2. Acceso al Sistema
 
-### 🔧 Funcionalidades Core
-- **Gestión Integral de Contactos**: Creación, lectura, actualización y eliminación (CRUD) de contactos con validaciones automáticas y normalización de datos (ej. formato de teléfono E.164).
-- **Sistema de Llamadas y SMS**: Integración completa con Twilio para realizar y recibir llamadas, y enviar SMS.
-- **Spoof Calling**: Capacidad de realizar llamadas salientes mostrando un Caller ID personalizado (configurado como `spoofNumber`).
-- **Autenticación Segura**: Sistema de usuarios con roles (admin, asesor) y contraseñas hasheadas (bcrypt). Validación de fortaleza de contraseña.
+### Configuración Inicial (Primer Uso)
 
-### 🧠 Análisis y Gestión con IA (Gemini AI)
-- **Evaluación Automática de Calidad de Contactos**:
-    - Puntuación de calidad (0-100) basada en múltiples factores: validez de teléfono y email, completitud del nombre, campos requeridos y opcionales.
-    - Detección de nombres sospechosos mediante patrones predefinidos (ej. "test", "demo", caracteres repetidos).
-    - Análisis de sospecha por IA: Gemini AI evalúa la autenticidad del contacto, aplicando penalizaciones si se detecta alta probabilidad de ser falso o de prueba.
-- **Gestión de Asesores Optimizada**:
-    - Perfiles de asesor con seguimiento de rendimiento (`performanceScore`) y capacidad (`maxContacts`, `currentContactCount`).
-    - **Distribución Inteligente de Contactos**: Asignación automática de contactos nuevos o sin asignar a los asesores más adecuados, considerando su rendimiento, carga actual y la calidad del contacto.
+Si estás accediendo a una instancia nueva del CRM (por ejemplo, después de una instalación limpia donde no existen usuarios):
 
-### 🚀 Características Avanzadas de la Plataforma
-- **Seguridad Mejorada**: Uso de `helmet` para configurar cabeceras HTTP seguras (incluyendo CSP), protección contra CSRF y XSS (básica).
-- **Optimización de Rendimiento**: Compresión de respuestas HTTP (`compression`).
-- **Rate Limiting**: Protección contra abuso de API (configurable).
-- **Logging Avanzado**: Registro detallado de peticiones, errores y eventos importantes del sistema con Winston.
-- **Configuración Flexible de CORS**: Permite especificar orígenes permitidos a través de variables de entorno.
-- **Manejo Robusto de Errores**: Captura global de errores y respuestas JSON estandarizadas.
-- **Cierre Seguro del Servidor (`Graceful Shutdown`)**: Asegura que las conexiones activas se manejen correctamente antes de detener el servidor.
-- **Script de Despliegue Mejorado**: Automatización del despliegue a producción usando `rsync` para eficiencia y `npm ci` para instalaciones consistentes.
+1.  Abre la URL de la aplicación en tu navegador web.
+2.  Se te presentará automáticamente una pantalla para **"Configurar Super Administrador"**.
+    ![Pantalla de Setup de Superadmin](https://i.imgur.com/placeholder_setup.png) *(Nota: Reemplazar con una captura de pantalla real si es posible)*
+3.  Ingresa el **nombre de usuario** deseado para la cuenta principal del sistema.
+4.  Ingresa una **contraseña segura**. La contraseña debe tener al menos 8 caracteres, incluyendo una letra mayúscula, una minúscula y un número.
+5.  **Confirma la contraseña**.
+6.  Haz clic en el botón **"Crear Super Administrador"**.
+7.  Si la creación es exitosa, verás un mensaje de confirmación y serás redirigido a la pantalla de inicio de sesión normal.
 
----
+Esta cuenta de Super Administrador será la única que podrá gestionar otros administradores y la configuración crítica del sistema.
 
-## Acceso al Sistema
+### Inicio de Sesión Regular
 
-### URL de Acceso (Ejemplo)
-El acceso al sistema se realiza a través de la URL configurada durante el despliegue. Ejemplo:
-```
-https://access-5018020518.webspace-host.com:3001
-```
-*Nota: Esta URL es un ejemplo y dependerá de tu configuración de hosting y dominio.*
+Una vez que el Super Administrador (o cualquier otro usuario) ha sido creado:
 
-### Usuarios Predeterminados
-El sistema puede inicializarse con los siguientes usuarios (si se crean en `databaseService.js`):
+1.  Abre la URL de la aplicación en tu navegador.
+2.  Verás la pantalla de **Inicio de Sesión**.
+    ![Pantalla de Login](https://i.imgur.com/placeholder_login.png) *(Nota: Reemplazar con una captura de pantalla real si es posible)*
+3.  Ingresa tu **Usuario** y **Contraseña**.
+4.  Haz clic en **"Iniciar Sesión"**.
 
-#### Administradores
-| Usuario     | Contraseña         | Rol   |
-|-------------|--------------------|-------|
-| Chispadelic | Svernis1Password!  | admin |
-| Kimbowimbo  | corazonKPassword!  | admin |
+Si las credenciales son correctas, accederás al panel principal de la aplicación.
 
-#### Asesores
-| Usuario   | Contraseña | Rol    |
-|-----------|------------|--------|
-| Rafurioso | Miau1234*  | asesor |
-| Wero      | Miau1234*  | asesor |
-
-*Nota: Las contraseñas deben cumplir con los requisitos de seguridad: mínimo 8 caracteres, una mayúscula, una minúscula y un número.*
-
----
-## Gestión de Contactos
-El sistema permite una gestión completa de los contactos. Al crear o actualizar un contacto, se realiza un análisis de calidad.
-
-### Análisis de Calidad del Contacto
-Cada contacto es evaluado por el sistema `geminiService` utilizando una combinación de reglas y análisis de IA:
-- **Puntuación de Calidad (`qualityScore`)**: Un valor numérico de 0 a 100.
-    - **`SCORING_WEIGHTS`**: Define cuánto suma o resta cada criterio:
-        - `VALID_PHONE`: +30 puntos por teléfono válido.
-        - `VALID_EMAIL`: +20 puntos por email válido.
-        - `COMPLETE_NAME`: +20 puntos por nombre completo.
-        - `IS_COMPLETE`: +20 puntos por campos básicos completos.
-        - `OPTIONAL_FIELDS_BONUS`: +10 puntos por llenar campos opcionales.
-        - `AI_SUSPICION_PENALTY`: -20 puntos si la IA lo marca como sospechoso.
-- **Detección de Patrones Sospechosos**: Nombres como "test", "demo", o con caracteres repetitivos pueden reducir la puntuación o marcar el contacto.
-- **Análisis de IA (Gemini)**: Si está configurado, Gemini AI proporciona una evaluación más profunda sobre la autenticidad y calidad, pudiendo marcar un contacto como sospechoso y afectar su puntuación. Los detalles de este análisis pueden almacenarse junto al contacto.
-
----
-## Sistema de Llamadas y SMS
-Integrado con Twilio, permite:
-- **Enviar SMS**: A través del endpoint `/api/twilio/send-sms`. Se requiere número de destino, cuerpo del mensaje y opcionalmente un número de origen (`from`).
-- **Realizar Llamadas**: A través del endpoint `/api/twilio/make-call`. Se requiere número de destino (`to`) y un número de origen falso (`spoofNumber`). Se pueden pasar opciones como mensaje a reproducir y si se debe grabar la llamada.
-- **Webhooks**: El sistema está preparado para recibir webhooks de Twilio para actualizar el estado de las llamadas y grabaciones (configurar en la consola de Twilio apuntando a `/api/twilio/webhook/...`).
-
----
-## Gestión de Asesores
-Los asesores son usuarios del sistema que gestionan los contactos.
-- **Creación y Actualización**: Se pueden gestionar asesores, incluyendo su estado (activo/inactivo), `performanceScore` y `maxContacts`.
-- **Asociación con Usuarios**: Un perfil de usuario de rol "asesor" puede estar vinculado a un perfil de `Advisor`.
-
-### Distribución Inteligente de Contactos
-El `databaseService` utiliza `geminiService` para distribuir contactos no asignados:
-1. Se obtienen contactos sin `assignedAdvisorId`.
-2. Se obtienen asesores activos que no han alcanzado su `maxContacts`.
-3. Los contactos se ordenan por `qualityScore` (mayor primero) y luego por fecha de creación.
-4. Los asesores se ordenan por `performanceScore` (mayor primero) y luego por menor carga actual.
-5. Se asignan los contactos iterativamente, actualizando la carga del asesor.
-El proceso queda registrado para auditoría.
+**Cerrar Sesión:** Para cerrar tu sesión, haz clic en el botón "Cerrar Sesión" <i class="fas fa-sign-out-alt"></i> ubicado en la parte superior derecha de la pantalla.
 
 ---
 
-## Configuración Avanzada
+## 3. Interfaz Principal
 
-### Variables de Entorno Críticas
-Asegúrate de configurar estas variables en tu archivo `.env` (o `.env.production` para producción):
+Al iniciar sesión, verás el panel principal del CRM.
 
-#### Twilio
-```env
-TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=+1234567890 # Número Twilio por defecto para envíos/llamadas
-AGENT_PHONE_NUMBER=+525512345678 # Ejemplo de número de agente para ciertas lógicas
-VOICE_WEBHOOK_URL=https://tu-dominio.com/api/twilio/webhook # URL base para webhooks de voz
-```
+![Panel Principal](https://i.imgur.com/placeholder_dashboard.png) *(Nota: Reemplazar con una captura de pantalla real si es posible)*
 
-#### Google Gemini AI
-```env
-GEMINI_API_KEY=AIxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-#### Base de Datos (MariaDB/MySQL)
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=crm_database
-DB_USER=crm_user
-DB_PASSWORD=secret_password
-DB_DIALECT=mysql # o mariadb
-```
-
-#### Servidor y Aplicación
-```env
-NODE_ENV=production # o development
-PORT=3001
-API_PREFIX=/api # Prefijo para todas las rutas de la API
-CORS_ORIGIN=http://localhost:3000,https://tu-frontend.com # Orígenes CORS permitidos, separados por coma
-BCRYPT_SALT_ROUNDS=12 # Costo de hasheo para contraseñas
-```
-*Otros como `JWT_SECRET` si implementas autenticación JWT.*
-
----
-## Despliegue y Mantenimiento
-
-### Proceso de Despliegue con `deploy-production.sh`
-El script `deploy-production.sh` ha sido mejorado para un despliegue más robusto:
-1.  **Preparación Local**:
-    *   Asegura tener `rsync` instalado localmente.
-    *   Verifica que el archivo `.env.production` exista en la raíz del proyecto con las configuraciones correctas para el entorno de producción.
-2.  **Ejecución del Script**:
-    ```bash
-    chmod +x deploy-production.sh
-    ./deploy-production.sh [usuario_ssh] [host_ssh] [ruta_remota_absoluta]
-    ```
-    *   Los argumentos son opcionales si los valores por defecto en el script son correctos.
-3.  **¿Qué hace el script?**
-    *   Crea un paquete de deployment local en una carpeta `dist/`.
-    *   Sube los archivos al servidor remoto especificado usando `rsync` (eficiente y borra archivos obsoletos del destino).
-    *   Se conecta por SSH al servidor y ejecuta:
-        *   `npm ci --omit=dev --legacy-peer-deps`: Instala dependencias de producción de forma limpia desde `package-lock.json`.
-        *   Detiene cualquier proceso anterior de la aplicación.
-        *   Inicia la aplicación con `nohup node backend/server.js`, redirigiendo logs a `logs/app.log`.
-        *   Verifica que la aplicación se haya iniciado correctamente.
-4.  **Verificación Post-Despliegue**:
-    *   Accede a la URL de la aplicación.
-    *   Revisa los logs en el servidor: `[ruta_remota_absoluta]/logs/app.log`.
-
-### Mantenimiento
-- **Logs**: Revisa regularmente los logs del servidor para detectar problemas.
-- **Actualizaciones**: Para actualizar, sube los nuevos cambios (preferiblemente vía Git en el servidor o re-ejecutando el script de deploy) y reinicia la aplicación. `npm ci` se encargará de las dependencias.
-- **Backups**: Asegura tener una estrategia de backup para la base de datos.
+### Navegación y Componentes Comunes
+-   **Encabezado:** Muestra el nombre de la aplicación, tu nombre de usuario y rol. Aquí también encontrarás botones para:
+    -   <i class="fas fa-users-cog"></i> **Gestionar Usuarios** (Visible solo para Super Administradores).
+    -   <i class="fas fa-cogs"></i> **Configuración de API** (Visible para Administradores y Super Administradores).
+    -   <i class="fas fa-sign-out-alt"></i> **Cerrar Sesión**.
+-   **Dashboard Stats:** Tarjetas con estadísticas rápidas como total de contactos, contactados hoy, etc.
+-   **Módulos:** Diferentes secciones de la aplicación como "Comunicación Estándar" (Gestión de Contactos), "Desglose por Estado", "Métricas de Rendimiento" y "Estado del Sistema". La visibilidad de algunos módulos dependerá de tu rol.
 
 ---
 
-## Solución de Problemas Comunes
-- **Error de conexión a la BD**: Verifica las variables de entorno `DB_HOST`, `DB_NAME`, `DB_USER`, `DB_PASSWORD` y que el servidor de BD sea accesible desde el servidor de la aplicación.
-- **Fallos en llamadas/SMS Twilio**: Revisa las credenciales de Twilio (`TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`), el saldo de tu cuenta Twilio, y los logs en la consola de Twilio.
-- **Errores de Gemini AI**: Confirma que `GEMINI_API_KEY` es correcta y tiene los permisos necesarios. Revisa los logs del `geminiService` para detalles.
-- **Problemas de CORS**: Asegúrate que `CORS_ORIGIN` en tu `.env` incluye la URL desde la cual el frontend está accediendo a la API.
-- **Aplicación no inicia después del deploy**: Revisa `[ruta_remota_absoluta]/logs/app.log` en el servidor para ver mensajes de error detallados. Puede ser un problema de dependencias o configuración.
+## 4. Gestión de Usuarios (Solo Super Administrador)
+
+Esta sección solo es accesible para usuarios con el rol de **Super Administrador**.
+
+### Acceder a la Gestión de Usuarios
+1.  Haz clic en el botón "Gestionar Usuarios" <i class="fas fa-users-cog"></i> en el encabezado.
+2.  Se mostrará el módulo de "Gestión de Usuarios".
+
+### Listar Usuarios
+Al acceder al módulo, verás una tabla con todos los usuarios del sistema, mostrando:
+-   Username
+-   Rol (admin, asesor)
+-   Estado (Activo Sí/No)
+-   ID de Asesor (si aplica)
+-   Último Login
+-   Acciones (Editar, Eliminar)
+
+### Crear un Nuevo Usuario
+1.  Haz clic en el botón **"<i class="fas fa-user-plus"></i> Agregar Nuevo Usuario"**.
+2.  Se abrirá un formulario modal.
+3.  Completa los campos:
+    *   **Username:** Nombre de usuario único.
+    *   **Password:** Contraseña segura (mínimo 8 caracteres, mayúscula, minúscula, número).
+    *   **Rol:** Selecciona "Admin" o "Asesor". (No puedes crear otro Super Administrador desde aquí).
+    *   **ID Asesor (Opcional):** Si el rol es "Asesor", puedes ingresar el ID numérico de un perfil de Asesor existente para vincularlos.
+    *   **Activo:** Marca esta casilla para que el usuario pueda iniciar sesión.
+4.  Haz clic en **"Guardar Usuario"**.
+5.  Si es exitoso, el usuario aparecerá en la tabla.
+
+### Editar un Usuario Existente
+1.  En la tabla de usuarios, haz clic en el botón "Editar" <i class="fas fa-edit"></i> correspondiente al usuario que deseas modificar.
+2.  El formulario modal se abrirá con los datos del usuario.
+3.  Modifica los campos necesarios.
+    *   Si dejas el campo de **Password en blanco**, la contraseña actual del usuario no se cambiará.
+    *   No puedes cambiar el rol de un usuario a "superadmin" o quitarle el rol de "superadmin" a través de este formulario.
+4.  Haz clic en **"Guardar Usuario"**.
+
+### Eliminar un Usuario
+1.  En la tabla de usuarios, haz clic en el botón "Eliminar" <i class="fas fa-trash"></i> correspondiente al usuario que deseas eliminar.
+2.  Aparecerá un mensaje de confirmación. Haz clic en "OK" para confirmar.
+3.  **Importante:**
+    *   Un Super Administrador no puede eliminarse a sí mismo.
+    *   No se puede eliminar al último Super Administrador del sistema.
+    *   Si eliminas un usuario que está vinculado a un perfil de Asesor, los contactos asignados a ese asesor serán desvinculados (quedarán sin asesor asignado).
+4.  Si la eliminación es exitosa, el usuario desaparecerá de la tabla.
 
 ---
 
-*Última actualización: Julio 2024*
-*Versión del manual: 3.1*
+## 5. Gestión de Contactos (Administradores y Super Administradores)
+
+Los usuarios con rol Administrador o Super Administrador pueden gestionar los contactos.
+
+### Ver Lista de Contactos
+-   El módulo "Comunicación Estándar" muestra la tabla de contactos con información como Nombre, Teléfono, Email, Estado y Notas.
+
+### Crear un Nuevo Contacto
+1.  Haz clic en el botón **"<i class="fas fa-plus"></i> Nuevo Contacto"** (visible para roles autorizados).
+2.  Completa el formulario con los detalles del contacto.
+    *   El sistema realizará validaciones básicas (ej. formato de email, teléfono).
+    *   (Potencial) Se podría realizar un análisis de IA para evaluar la calidad del contacto.
+3.  Guarda el contacto.
+
+### Buscar y Filtrar Contactos
+-   **Buscar:** Utiliza el campo "Buscar contactos..." para encontrar contactos por nombre, teléfono o email.
+-   **Filtrar por Estado:** Usa el menú desplegable "Todos los estados" para ver contactos según su estado actual (Pendiente, Contactado, etc.).
+
+### Editar un Contacto
+-   En la tabla de contactos, busca el contacto y haz clic en el botón "Editar" <i class="fas fa-edit"></i> en la columna "Acciones".
+-   Modifica los datos necesarios y guarda los cambios.
+
+### Eliminar un Contacto
+-   (Si la funcionalidad de eliminar contactos está habilitada para tu rol) En la tabla de contactos, busca el contacto y haz clic en el botón "Eliminar" <i class="fas fa-trash"></i>. Confirma la acción.
+
+### Registrar Interacción con Contacto
+-   (Si la funcionalidad está habilitada) Podrás registrar interacciones (llamadas, SMS, reuniones) con un contacto, actualizando su estado y añadiendo notas.
+
+### Exportar Contactos
+-   (Si la funcionalidad está habilitada) Haz clic en el botón **"<i class="fas fa-download"></i> Exportar"** para descargar una lista de contactos (generalmente en formato JSON o CSV).
 
 ---
 
-## Configuración
+## 6. Gestión de Asesores (Administradores y Super Administradores)
 
-### Variables de Entorno
+Permite administrar los perfiles de los asesores que interactuarán con los contactos.
 
-#### Configuración de Twilio
-```env
-TWILIO_ACCOUNT_SID=your_twilio_account_sid
-TWILIO_AUTH_TOKEN=your_twilio_auth_token
-TWILIO_PHONE_NUMBER=+1234567890
-AGENT_PHONE_NUMBER=+525613714594
-```
+### Ver Lista de Asesores
+-   (Si hay una sección dedicada) Podrás ver una lista de todos los asesores, su estado, y posiblemente métricas básicas.
 
-#### Configuración de IA
-```env
-GEMINI_API_KEY=your_gemini_api_key
-```
+### Crear un Nuevo Asesor
+-   Completa el formulario con los detalles del asesor: nombre, email, teléfono (nuevo campo), departamento (nuevo campo), especialidades (nuevo campo), horas de trabajo (nuevo campo) y capacidad máxima de contactos.
 
-#### Base de Datos
-```env
-DB_HOST=your_database_host
-DB_PORT=3306
-DB_NAME=your_database_name
-DB_USER=your_database_user
-DB_PASSWORD=your_database_password
-```
+### Editar un Asesor
+-   Modifica los detalles de un asesor existente, incluyendo su estado (activo/inactivo) y puntaje de rendimiento.
+
+### Desactivar un Asesor
+-   En lugar de eliminar, los asesores se desactivan (soft delete) para mantener la integridad de los datos históricos. Un asesor inactivo no recibirá nuevos contactos.
+
+### Ver Rendimiento y Carga de Trabajo
+-   Secciones dedicadas (si están implementadas) pueden mostrar métricas sobre el rendimiento de los asesores y su carga de trabajo actual.
+
+### Asignar Contactos a un Asesor
+-   Permite asignar manualmente uno o varios contactos a un asesor específico, respetando su capacidad.
 
 ---
 
-## Despliegue en Producción
+## 7. Funcionalidades para Asesores
 
-### Preparación
-1. Crear archivo `.env.production` con credenciales reales
-2. Configurar acceso SSH al servidor
-3. Ejecutar script de despliegue
+Los usuarios con rol Asesor tienen una vista más enfocada:
 
-### Comando de Despliegue
-```bash
-chmod +x deploy-production.sh
-./deploy-production.sh
-```
+### Visualizar Contactos Asignados
+-   Principalmente verán y gestionarán los contactos que les han sido asignados.
 
-### Verificación
-- Verificar que la aplicación esté ejecutándose
-- Comprobar logs en `/home/a951193/crm-twilio/logs/`
-- Acceder a la URL de producción
+### Interactuar con Contactos (Llamadas/SMS - Potencial)
+-   La interfaz puede incluir botones para iniciar llamadas o enviar SMS directamente desde la ficha del contacto, utilizando la integración con Twilio (si está configurada y habilitada).
 
 ---
 
-*Última actualización: Diciembre 2024*
-*Versión del manual: 3.0*
+## 8. Configuración de API (Administradores y Super Administradores)
+
+El botón "Configuración de API" <i class="fas fa-cogs"></i> en el encabezado abre un panel para gestionar:
+-   Credenciales de Twilio (Account SID, Auth Token, Número de Teléfono).
+-   Credenciales de Gemini AI (API Key, Endpoint URL).
+-   Otras integraciones de IA que se puedan añadir.
+
+**Importante:** Modificar estas configuraciones solo si sabes lo que estás haciendo, ya que afectan la capacidad del sistema para comunicarse con servicios externos.
+
+---
+
+## 9. Solución de Problemas Básicos
+
+-   **No puedo iniciar sesión:**
+    *   Verifica que tu usuario y contraseña sean correctos (sensible a mayúsculas/minúsculas).
+    *   Si es el primer uso, asegúrate de haber completado el setup del Super Administrador si se te presentó esa pantalla.
+    *   Contacta a tu Super Administrador si el problema persiste.
+-   **No veo una funcionalidad que debería estar disponible:**
+    *   Asegúrate de que tu rol de usuario (Asesor, Admin, Super Admin) tenga los permisos necesarios para esa funcionalidad.
+    *   Algunas funcionalidades pueden depender de configuraciones de API (Twilio, Gemini) que deben estar correctamente ingresadas.
+-   **Errores al guardar datos:**
+    *   Revisa los mensajes de error que muestra la aplicación. Pueden indicar campos obligatorios que faltan o datos en formato incorrecto.
+-   **La aplicación se ve extraña o no carga bien:**
+    *   Intenta refrescar la página (Ctrl+R o Cmd+R).
+    *   Limpia la caché de tu navegador.
+    *   Asegúrate de tener una conexión a internet estable.
+
+Si los problemas continúan, contacta al administrador del sistema o al equipo de soporte técnico proporcionando tantos detalles como sea posible sobre el error.
+
+---
+*Manual de Usuario v3.2.0*
+*Última actualización: [Fecha Actual]*
