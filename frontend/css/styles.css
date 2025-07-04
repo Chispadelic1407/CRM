@@ -344,21 +344,25 @@ tr:last-child td {
     letter-spacing: 0.5px;
 }
 
-.status-Pendiente {
-    background-color: #808080;
+.status-New { /* Antes .status-Pendiente */
+    background-color: #808080; /* Gris para 'Nuevo' */
 }
 
-.status-Contactado {
+.status-Contacted { /* Antes .status-Contactado */
     background-color: var(--success-color);
 }
 
-.status-Requiere_Seguimiento {
+.status-FollowUp { /* Antes .status-Requiere_Seguimiento */
     background-color: var(--warning-color);
-    color: #333;
+    color: #333; /* Mantener color de texto oscuro para warning */
 }
 
-.status-No_Interesado {
+.status-Not_Interested { /* Antes .status-No_Interesado */
     background-color: var(--danger-color);
+}
+
+.status-Converted { /* Nuevo estado */
+    background-color: var(--primary-color); /* Usar color primario para 'Convertido' */
 }
 
 /* Modal styles */

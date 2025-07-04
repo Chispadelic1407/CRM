@@ -1,356 +1,255 @@
-# AI-Powered CRM System with Gemini Integration - v3.1.0
+# Sistema CRM Avanzado con Gestión de Usuarios - v3.2.0
 
-## Overview
+## Descripción General
 
-This is an advanced Customer Relationship Management (CRM) system enhanced with Google Gemini AI capabilities for intelligent contact analysis, data quality assessment, and automated advisor assignment. The system combines traditional CRM functionality with cutting-edge AI to provide superior contact management and business intelligence. This version (3.1.0) incorporates significant updates to models, services, security, and deployment processes.
+Este es un sistema de Gestión de Relaciones con el Cliente (CRM) avanzado, diseñado para una gestión eficiente de contactos y asesores. Esta versión (3.2.0) introduce un robusto sistema de roles de usuario, incluyendo un Super Administrador, y mejoras significativas en seguridad, autenticación y la estructura general de la aplicación. El sistema está preparado para integraciones con IA (como Google Gemini) y servicios de comunicación (como Twilio), aunque el enfoque principal de esta versión ha sido la consolidación del núcleo y la gestión de usuarios.
 
-## 🚀 Key Features
+## 🚀 Características Clave
 
-### 🧠 AI-Powered Contact Analysis (Enhanced)
-- **Intelligent Data Validation**: Automatic phone number (libphonenumber-js) and email validation. Normalization of phone numbers to E.164.
-- **Comprehensive Quality Scoring**: AI-driven quality assessment (`qualityScore` 0-100) for each contact, based on configurable `SCORING_WEIGHTS` (valid phone/email, name completeness, AI suspicion).
-- **Suspicious Contact Detection**:
-    - Pattern-based detection for names (e.g., "test", "demo", repeated chars).
-    - Gemini AI analysis for deeper authenticity checks, influencing the score.
-- **Data Completeness Analysis**: Evaluates required vs. optional fields to contribute to the quality score.
+### 👑 Gestión Jerárquica de Usuarios (Nuevo)
+- **Roles Definidos:**
+    -   **Super Administrador:** Control total del sistema, incluyendo la gestión de otros administradores y asesores. Creación inicial a través de una interfaz de setup.
+    -   **Administrador:** Gestión de contactos, asesores y otras funciones administrativas.
+    -   **Asesor:** Acceso limitado a sus contactos asignados y funcionalidades de comunicación.
+- **Setup Inicial Seguro:** Interfaz para la creación del primer Super Administrador si el sistema es nuevo.
+- **Panel de Gestión de Usuarios:** Interfaz dedicada para que el Super Administrador pueda crear, listar, editar y eliminar otros usuarios (administradores y asesores).
 
-### ♟️ Smart Advisor Management (Enhanced)
-- **Automated Contact Distribution**: Gemini AI-assisted assignment logic considering advisor `performanceScore`, current workload (`currentContactCount` vs `maxContacts`), and contact `qualityScore`.
-- **Performance Tracking**: Advisor model includes `performanceScore`.
-- **Workload Balancing**: Distribution aims to assign to the best available advisor with capacity.
+### 🧠 Preparado para Análisis Inteligente de Contactos
+- **Validación de Datos:** Validación automática de números de teléfono (con `libphonenumber-js`) y correos electrónicos. Normalización de números de teléfono a formato E.164.
+- **Potencial para Puntuación de Calidad:** El modelo de Contacto incluye campos para `qualityScore` y análisis de IA, sentando las bases para futuras integraciones.
+- **Detección de Contactos Sospechosos (Potencial):** Estructura para la detección basada en patrones y análisis de IA.
 
-### 🗂️ Robust Data Management
-- **Sequelize Models (User, Contact, Advisor)**: Enriched with more fields, strong validations (e.g., `isStrongPassword` for User), hooks for hashing and normalization, and optimized indexes.
-- **Transactional Operations**: Key database operations (create contact, distribute) are wrapped in Sequelize transactions for data integrity.
-- **Dynamic Model Loading**: `models/index.js` now loads models dynamically.
+### ♟️ Gestión Inteligente de Asesores (Potencial)
+- **Distribución Automatizada de Contactos (Potencial):** Lógica preparada para asignación asistida por IA considerando el rendimiento del asesor, carga de trabajo y calidad del contacto.
+- **Seguimiento de Rendimiento (Potencial):** El modelo de Asesor incluye `performanceScore`.
 
-### 📞 Advanced Communication Features (Twilio)
-- **Spoof Calling System**: Make calls with a custom Caller ID (`spoofNumber`).
-- **SMS Integration**: Send SMS messages via Twilio.
-- **Dedicated Twilio Controller & Routes**: Logic modularized into `twilioController.js` and routes grouped under `routes/twilio.js`.
-- **Webhook Handling**: Ready for Twilio webhooks for call status and recordings.
+### 🗂️ Gestión Robusta de Datos
+- **Modelos Sequelize (User, Contact, Advisor):** Campos enriquecidos, validaciones fuertes (ej. `isStrongPassword` para Usuario), hooks para hashing de contraseñas y normalización, e índices optimizados.
+- **Operaciones Transaccionales:** Operaciones clave de base de datos (ej. eliminación de usuarios y reasignación de contactos) usan transacciones Sequelize para integridad de datos.
+- **Carga Dinámica de Modelos:** `models/index.js` carga modelos dinámicamente.
 
-### 🛡️ Enhanced Security & Reliability
-- **Helmet.js**: Configured for security headers, including a Content Security Policy (CSP).
-- **Graceful Shutdown**: Ensures the server handles active connections and closes resources properly on termination signals.
-- **Improved Error Handling**: Standardized API error responses and more detailed server-side logging.
-- **CORS Configuration**: Flexible CORS policy configurable via environment variables.
-- **Input Validation**: `express-validator` used in controllers for request sanitization.
-- **Password Security**: bcrypt for password hashing with configurable salt rounds.
+### 📞 Preparado para Funciones de Comunicación Avanzadas (Twilio)
+- **Sistema de Spoof Calling (Potencial):** Preparado para realizar llamadas con un Caller ID personalizado.
+- **Integración SMS (Potencial):** Listo para enviar mensajes SMS.
+- **Controlador y Rutas Twilio Dedicadas:** Lógica modularizada para futuras funcionalidades de Twilio.
 
-### ⚙️ Performance & Deployment
-- **Response Compression**: `compression` middleware enabled.
-- **Optimized Deployment Script**: `deploy-production.sh` now uses `rsync` for efficient file transfer and `npm ci` for consistent production installs.
-- **Structured Logging**: Winston logger for detailed application event tracking.
+### 🛡️ Seguridad y Fiabilidad Mejoradas
+- **Autenticación Basada en JWT:** Flujo de login seguro con JSON Web Tokens.
+- **Autorización Basada en Roles (RBAC):** Protección de rutas y funcionalidades según el rol del usuario (Super Administrador, Administrador, Asesor).
+- **Helmet.js:** Configurado para cabeceras de seguridad, incluyendo una Política de Seguridad de Contenido (CSP) básica.
+- **Cierre Controlado del Servidor (Graceful Shutdown):** Maneja conexiones activas y cierra recursos correctamente.
+- **Manejo de Errores Mejorado:** Respuestas de API estandarizadas y logging detallado en servidor.
+- **Configuración CORS:** Política CORS flexible configurable mediante variables de entorno.
+- **Validación de Entradas:** `express-validator` usado en rutas para sanitizar y validar datos de las solicitudes.
+- **Seguridad de Contrasñas:** `bcrypt` para hashing de contraseñas con rondas de sal configurables.
+- **Rate Limiting:** Protección contra ataques de fuerza bruta (especialmente en login) y limitación general de tasa de solicitudes API.
 
-## 🏗️ System Architecture
+### ⚙️ Rendimiento y Despliegue
+- **Compresión de Respuestas:** Middleware `compression` habilitado.
+- **Script de Despliegue Optimizado:** `deploy-production.sh` usa `rsync` y `npm ci`.
+- **Logging Estructurado:** Logger Winston para seguimiento detallado de eventos.
+- **Configuración de URL Base API en Frontend:** Archivo `config.js` para fácil gestión de la URL del backend.
 
-### Backend (Node.js/Express) - Updated
+## 🏗️ Arquitectura del Sistema
+
+### Backend (Node.js/Express)
 ```
 backend/
-├── controllers/      # Request handlers
-│   └── twilioController.js # Logic for Twilio SMS/calls
-├── models/           # Sequelize database models (User, Contact, Advisor, index)
-│   ├── User.js       # User model with password validation and hashing
-│   ├── Contact.js    # Contact model with qualityScore, AI analysis fields, phone normalization
-│   ├── Advisor.js    # Advisor model with performanceScore, maxContacts
-│   └── index.js      # Dynamic model loading, DB configuration
-├── services/         # Business logic
-│   ├── geminiService.js     # Enhanced AI analysis, scoring, distribution logic
-│   ├── databaseService.js   # Transactional DB operations, default data creation
-│   └── twilioService.js     # Twilio communication services
-├── routes/           # API endpoints
-│   ├── auth.js       # Authentication routes
-│   ├── twilio.js     # Routes for Twilio functionalities (SMS, Call, Spoof, Webhooks)
-│   ├── contacts.js   # Contact management
-│   ├── advisors.js   # Advisor management
-│   └── ai.js         # AI-specific analysis endpoints
-├── middleware/       # Custom middleware (e.g., rateLimiter, auth)
-└── utils/            # Utility functions (e.g., logger)
-└── server.js         # Main Express server setup, security, error handling
+├── controllers/      # Manejadores de solicitudes (ej. twilioController.js)
+├── middleware/       # Middlewares personalizados (ej. rateLimiter.js, lógica de auth en routes/auth.js)
+├── models/           # Modelos de base de datos Sequelize (User, Contact, Advisor, index.js)
+├── routes/           # Endpoints de la API (auth.js, contacts.js, advisors.js, users.js, twilio.js, ai.js)
+├── services/         # Lógica de negocio (databaseService.js, geminiService.js, twilioService.js)
+├── utils/            # Funciones de utilidad (ej. logger.js)
+└── server.js         # Configuración principal del servidor Express, seguridad, manejo de errores
 ```
 
-### Frontend (HTML/CSS/JavaScript) - Updated
+### Frontend (HTML/CSS/JavaScript Vainilla)
 ```
 frontend/
+├── css/
+│   └── styles.css    # Estilos principales
 ├── js/
-│   └── spoofCalling.js # Enhanced with DOM caching, robust polling, updated API calls
-└── ... (index.html, css/)
+│   ├── app.js        # Lógica principal de la aplicación frontend
+│   ├── config.js     # Configuración de la URL base de la API
+│   └── spoofCalling.js # Funcionalidad específica (potencial)
+└── index.html        # Estructura principal del frontend
 ```
 
-## 🛠️ Instalación Fácil (¡Para Empezar a Jugar!)
+## 🛠️ Instalación y Configuración
 
-¿Quieres probar este CRM en tu propia computadora? ¡Es más fácil de lo que piensas! Solo sigue estos pasos:
+**Requisitos Previos:**
 
-**¿Qué necesitas antes de empezar?**
+1.  **Node.js y npm**: Versión 18 o superior. (Instalar desde [nodejs.org](https://nodejs.org/)).
+2.  **Git**: (Instalar desde [git-scm.com](https://git-scm.com/)).
+3.  **Base de Datos MariaDB o MySQL**: Para desarrollo local o producción.
+4.  **Claves API (Opcional, para funcionalidad completa):**
+    *   Google Gemini AI.
+    *   Twilio (Account SID, Auth Token, Número de Teléfono).
 
-1.  **Node.js y npm**: Imagina que Node.js es como el motor que hace funcionar nuestro CRM, y npm es la tienda donde conseguimos las piezas. Si no los tienes, pídele ayuda a un adulto para instalarlos desde [nodejs.org](https://nodejs.org/). (Necesitarás versión 18 o más nueva).
-2.  **Git**: Es como una máquina del tiempo para guardar nuestro código. Si no lo tienes, también necesitarás ayuda para instalarlo desde [git-scm.com](https://git-scm.com/).
-3.  **Una Base de Datos**: Piensa en esto como el archivador donde guardaremos todos los contactos. Este CRM usa MariaDB o MySQL. Para probar fácil, puedes usar una base de datos gratuita online o pedir ayuda para instalar una en tu compu.
-4.  **Claves Secretas (API Keys)**:
-    *   **Gemini AI**: Para que la inteligencia artificial funcione, necesitas una llave de Google Gemini.
-    *   **Twilio**: Si quieres enviar SMS y hacer llamadas, necesitas llaves de Twilio.
-    *   *(No te preocupes, el sistema puede funcionar en un "modo demo" sin estas si solo quieres ver cómo es por dentro, pero algunas funciones no estarán completas).*
+**Pasos de Instalación Local:**
 
-**¡Manos a la Obra!**
+1.  **Clonar el Repositorio**:
+    ```bash
+    git clone https://github.com/tu-usuario/tu-repositorio.git # Reemplaza con la URL real
+    cd nombre-del-repositorio
+    ```
 
-1.  **Copia el Proyecto (Clonar)**:
-    *   Abre una ventana de comandos (a veces se llama "Terminal" o "PowerShell").
-    *   Escribe esto y presiona Enter (pídele a un adulto que te ayude a encontrar dónde quieres guardar el proyecto):
-        ```bash
-        git clone https://github.com/tu-usuario/tu-repositorio.git
-        ```
-        *(Reemplaza `https://github.com/tu-usuario/tu-repositorio.git` con la dirección real de este proyecto).*
-    *   Luego, entra a la carpeta que se creó:
-        ```bash
-        cd nombre-de-la-carpeta-del-proyecto
-        ```
-
-2.  **Prepara las Llaves Secretas (`.env`)**:
-    *   Ve a la carpeta `backend/`.
-    *   Busca un archivo llamado `.env.example`. Haz una copia y llámala `.env`.
-    *   Abre el archivo `.env` con un editor de texto simple (¡como el Bloc de Notas!).
-    *   Aquí es donde pondrás tus "llaves secretas" y configurarás la base de datos. Pídele ayuda a un adulto para llenar esto. Se verá algo así:
-
+2.  **Configurar Variables de Entorno (Backend)**:
+    *   Navega a la carpeta `backend/`.
+    *   Copia `backend/.env.example` a `backend/.env`.
+    *   Edita `backend/.env` con tu configuración local:
         ```env
-        # Configuración del Servidor
         NODE_ENV=development
         PORT=3001
         API_PREFIX=/api
-        CORS_ORIGIN=http://localhost:3000
+        CORS_ORIGIN=http://localhost:3001 # O el puerto donde sirvas el frontend si es separado en desarrollo
 
-        # Seguridad de Contraseñas
+        JWT_SECRET=tu_secreto_jwt_muy_largo_y_seguro # ¡Cambia esto!
         BCRYPT_SALT_ROUNDS=12
 
-        # Twilio (si las tienes)
-        TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxx
-        TWILIO_AUTH_TOKEN=tu_token_de_twilio
-        TWILIO_PHONE_NUMBER=+1234567890
-        VOICE_WEBHOOK_URL=http://localhost:3001/api/twilio/webhook # Para pruebas locales con ngrok
-
-        # Google Gemini AI (si la tienes)
-        GEMINI_API_KEY=AIxxxxxxxxxxxxxxx
-
-        # Base de Datos (ejemplo para MariaDB/MySQL local)
+        # Configuración de Base de Datos (ej. MySQL/MariaDB local)
         DB_HOST=localhost
         DB_PORT=3306
-        DB_NAME=micrm_db
-        DB_USER=usuario_crm
-        DB_PASSWORD=contraseña_super_secreta
-        DB_DIALECT=mysql
-        ```
-    *   **¡Importante!** Guarda este archivo. Nunca compartas tus llaves secretas con nadie.
+        DB_NAME=crm_dev_db
+        DB_USER=crm_user
+        DB_PASSWORD=tu_contraseña_de_bd
+        DB_DIALECT=mysql # o mariadb
 
-3.  **Consigue las Piezas (Instalar Dependencias)**:
-    *   Asegúrate de estar en la carpeta `backend/` en tu ventana de comandos.
-    *   Escribe esto y presiona Enter:
+        # Rate Limiting (ejemplos, ajústalos según necesidad)
+        RATE_LIMIT_WINDOW_MS=900000 # 15 minutos
+        RATE_LIMIT_MAX_REQUESTS=100
+        LOGIN_RATE_LIMIT_WINDOW_MS=900000 # 15 minutos
+        LOGIN_RATE_LIMIT_MAX_REQUESTS=10
+
+        # Twilio (opcional)
+        TWILIO_ACCOUNT_SID=
+        TWILIO_AUTH_TOKEN=
+        TWILIO_PHONE_NUMBER=
+        VOICE_WEBHOOK_URL=http://localhost:3001/api/twilio/webhook # Para pruebas locales con ngrok
+
+        # Google Gemini AI (opcional)
+        GEMINI_API_KEY=
+        ```
+
+3.  **Instalar Dependencias del Backend**:
+    *   En la carpeta `backend/`:
         ```bash
         npm install
         ```
-        Esto descargará todas las "piezas" que nuestro CRM necesita para funcionar. ¡Puede tardar un poquito!
 
-4.  **¡Enciende el Motor! (Iniciar el Servidor)**:
-    *   Aún en la carpeta `backend/`, escribe esto y presiona Enter:
+4.  **Iniciar el Servidor Backend**:
+    *   En la carpeta `backend/`:
         ```bash
         npm run dev
         ```
-        Esto enciende el CRM en "modo desarrollo" (¡perfecto para jugar y probar!). Verás mensajes en la consola que te dicen que está funcionando.
+    El backend estará corriendo (por defecto en `http://localhost:3001`).
 
-5.  **¡A Explorar!**:
-    *   Si todo salió bien, el backend del CRM estará corriendo. Generalmente, la parte del "frontend" (lo que ves en el navegador) se sirve desde la carpeta `frontend/` que está junto a `backend/`.
-    *   Abre tu navegador de internet (Chrome, Firefox, etc.) y ve a `http://localhost:3001` (o el puerto que hayas puesto en `PORT` en tu archivo `.env`). El servidor Node.js también sirve el frontend.
-    *   Si hay una interfaz gráfica, ¡deberías verla!
-    *   Puedes probar si el API funciona yendo a `http://localhost:3001/api/health` (o `http://localhost:PUERTO/tu_API_PREFIX/health`). Debería decirte que todo está "UP".
+5.  **Acceder al Frontend**:
+    *   El backend Express sirve los archivos estáticos de la carpeta `frontend/`.
+    *   Abre tu navegador y ve a `http://localhost:3001` (o el puerto que hayas configurado).
 
-¡Y eso es todo! Ya tienes el CRM funcionando en tu computadora para que lo explores.
+6.  **Configuración Inicial del Super Administrador**:
+    *   Al acceder por primera vez (con una base de datos limpia), el frontend debería presentar una pantalla para crear el primer usuario Super Administrador. Sigue las instrucciones en pantalla.
+    *   Si esta pantalla no aparece y ves el login normal, es posible que ya exista un superadministrador o que necesites limpiar la base de datos.
 
-## 🚀 Despliegue Fácil a Producción (¡Para que Todos lo Usen!)
+## 🚀 Despliegue a Producción
 
-¿Ya probaste el CRM en tu compu y ahora quieres ponerlo en un servidor real para que otras personas lo usen? ¡Genial! Usaremos un script mágico llamado `deploy-production.sh` que hace casi todo el trabajo.
+El script `deploy-production.sh` está diseñado para facilitar el despliegue a un servidor de producción.
 
-**¿Qué necesitas antes de empezar?**
+**Requisitos en el Servidor de Producción:**
+1.  Acceso SSH.
+2.  Node.js (v18+) y npm.
+3.  PM2 o un gestor de procesos similar (recomendado para mantener la aplicación corriendo). (El script actual usa PM2).
+4.  Base de datos configurada y accesible para la aplicación.
 
-1.  **Un Servidor**: Imagina que es una computadora superpoderosa que está siempre encendida y conectada a internet. Necesitas tener acceso a uno (puedes rentar uno o usar uno que te den).
-2.  **Acceso SSH a tu Servidor**: Es como tener una llave secreta para entrar a tu servidor y darle órdenes. Necesitarás un usuario y, a veces, una contraseña o una "llave SSH".
-3.  **Node.js (versión 18+) y npm en el Servidor**: Igual que en tu compu, el servidor necesita el "motor" (Node.js) y la "tienda de piezas" (npm).
-4.  **El Código del CRM**: Asegúrate de tener la última versión del código en tu computadora local, en la carpeta principal del proyecto.
+**Pasos (resumido):**
+1.  **Configurar `.env.production`**: En tu máquina local (en la raíz del proyecto), crea un archivo `.env.production` con todas las variables de entorno para producción (CORS_ORIGIN debe ser el dominio de tu frontend, URLs de webhook reales, credenciales de BD de producción, JWT_SECRET fuerte, etc.). Este archivo será copiado al servidor como `.env`.
+2.  **Permisos al Script**: En tu máquina local, `chmod +x deploy-production.sh`.
+3.  **Ejecutar Script**:
+    ```bash
+    ./deploy-production.sh tu_usuario_ssh@tu_servidor.com /ruta/remota/para/la_app
+    ```
+    (Reemplaza los placeholders con tus datos). El script se encargará de transferir los archivos, instalar dependencias de producción, configurar PM2 y reiniciar la aplicación.
+4.  **Verificar**: Accede a tu aplicación en el dominio de producción. Revisa los logs en el servidor si es necesario (usualmente en `/ruta/remota/para/la_app/logs/`).
 
-**¡A Desplegar!**
+## 📊 Endpoints de la API (Ilustrativo)
 
-1.  **Prepara las Llaves Secretas para el Servidor (`.env.production`)**:
-    *   En **tu computadora local**, en la carpeta principal del proyecto (la que contiene las carpetas `backend/`, `frontend/` y el archivo `deploy-production.sh`).
-    *   Crea un archivo llamado `.env.production`. Este archivo es MUY IMPORTANTE.
-    *   Abre `.env.production` con un editor de texto.
-    *   Copia aquí TODAS las configuraciones que necesita tu CRM para funcionar en el servidor real (las API keys de Twilio y Gemini, los datos de la base de datos de producción, etc.). Debe ser similar al archivo `.env` que usaste para probar, ¡pero con los datos REALES del servidor de producción!
-        ```env
-        # Ejemplo de .env.production
-        NODE_ENV=production
-        PORT=3001 # O el puerto que quieras usar en producción
-        API_PREFIX=/api
-        CORS_ORIGIN=https://tu-dominio-real.com # La dirección de tu frontend en producción
+Ruta base: `/api` (configurable mediante `API_PREFIX`)
 
-        BCRYPT_SALT_ROUNDS=12
+### Autenticación (`/auth`)
+-   `POST /setup-superadmin`: Creación del primer superadmin (solo si no existe).
+-   `POST /login`: Inicio de sesión.
+-   `POST /logout`: Cierre de sesión.
+-   `GET /me`: Obtener información del usuario autenticado.
 
-        TWILIO_ACCOUNT_SID=ACxxxxxxxxxxxxxxx_PRODUCCION
-        TWILIO_AUTH_TOKEN=tu_token_de_twilio_PRODUCCION
-        TWILIO_PHONE_NUMBER=+1_numero_twilio_produccion
-        VOICE_WEBHOOK_URL=https://tu-dominio-real.com/api/twilio/webhook # URL real para webhooks
+### Gestión de Usuarios (`/users` - Solo Superadmin)
+-   `GET /`: Listar usuarios (con paginación).
+-   `POST /`: Crear un nuevo usuario (admin o asesor).
+-   `GET /:userId`: Obtener un usuario específico.
+-   `PUT /:userId`: Actualizar un usuario.
+-   `DELETE /:userId`: Eliminar un usuario.
 
-        GEMINI_API_KEY=AIxxxxxxxxxxxxxxx_PRODUCCION
+### Gestión de Contactos (`/contacts` - Admin/Superadmin para modificar, todos autenticados para leer)
+-   `POST /`: Crear contacto.
+-   `GET /`: Listar contactos (preparado para filtros/paginación).
+-   `GET /:contactId`: Obtener un contacto.
+-   `PUT /:contactId`: Actualizar contacto.
+-   `DELETE /:contactId`: Eliminar contacto.
+-   `POST /:contactId/interaction`: Registrar interacción.
+-   `POST /bulk`: Creación masiva.
+-   `GET /search/:query`: Búsqueda (a optimizar).
+-   `GET /stats/overview`: Estadísticas.
+-   `GET /export/json`: Exportar.
 
-        DB_HOST=servidor_de_bd_produccion.com
-        DB_NAME=micrm_db_produccion
-        DB_USER=usuario_db_produccion
-        DB_PASSWORD=contraseña_super_segura_produccion
-        DB_DIALECT=mysql
-        ```
-    *   Guarda este archivo. El script de despliegue lo tomará y lo pondrá en el servidor como `.env`.
+### Gestión de Asesores (`/advisors` - Admin/Superadmin para modificar, todos autenticados para leer)
+-   `POST /`: Crear asesor.
+-   `GET /`: Listar asesores.
+-   `GET /:advisorId`: Obtener asesor.
+-   `PUT /:advisorId`: Actualizar asesor.
+-   `DELETE /:advisorId`: Desactivar asesor (soft delete).
+-   `GET /:advisorId/performance`: Métricas de rendimiento.
+-   `GET /:advisorId/workload`: Carga de trabajo.
+-   `POST /:advisorId/assign-contacts`: Asignar contactos.
 
-2.  **Dale Permiso al Script Mágico**:
-    *   En tu computadora local, abre una ventana de comandos en la carpeta principal del proyecto.
-    *   Escribe esto y presiona Enter:
-        ```bash
-        chmod +x deploy-production.sh
-        ```
-        Esto es como decirle a tu computadora: "¡Oye, este script tiene permiso para hacer cosas!" (Solo necesitas hacerlo una vez).
+### Otros (`/twilio`, `/ai`)
+-   Rutas preparadas para funcionalidades de Twilio y análisis de IA.
 
-3.  **¡Ejecuta el Script Mágico!**:
-    *   Ahora viene la parte emocionante. Desde la carpeta principal de tu proyecto en tu computadora, escribe algo como esto:
-        ```bash
-        ./deploy-production.sh tu_usuario_ssh tu_servidor.com /home/tu_usuario_ssh/ruta_app_servidor
-        ```
-        **Reemplaza:**
-        *   `tu_usuario_ssh`: Con tu nombre de usuario para entrar al servidor (ej. `pepito`).
-        *   `tu_servidor.com`: Con la dirección de tu servidor (ej. `crm.miservidor.com` o una IP).
-        *   `/home/tu_usuario_ssh/ruta_app_servidor`: Con la carpeta exacta en tu servidor donde quieres que viva el CRM (ej. `/home/pepito/mi_crm_online`).
+## 🔒 Características de Seguridad Implementadas
+-   Autenticación JWT.
+-   Autorización basada en roles (Superadmin, Admin, Asesor).
+-   Hashing de contraseñas con `bcrypt`.
+-   Protección contra CSRF y XSS (básica con Helmet, considerar CSP más estricta).
+-   Validación de entradas en API.
+-   Rate limiting en endpoints sensibles y generales.
+-   CORS configurado.
+-   Manejo seguro de variables de entorno.
 
-        *Si el script `deploy-production.sh` ya tiene estos valores configurados adentro y son los correctos, podrías ejecutarlo solo con `./deploy-production.sh`.*
+## 🧪 Pruebas
+-   Se recomienda realizar pruebas manuales exhaustivas de la API con herramientas como Postman o Insomnia.
+-   Probar todos los flujos de usuario en el frontend con los diferentes roles.
+-   `supertest` está en `devDependencies` para futuras pruebas de integración automatizadas.
 
-    *   Presiona Enter. El script te pedirá tu contraseña de SSH (si es que usas contraseña para entrar al servidor).
-    *   Verás un montón de mensajes en la pantalla. ¡Es el script trabajando! Está copiando los archivos, instalando las "piezas" en el servidor y encendiendo el CRM.
+## 📝 Logging y Monitoreo
+-   Logger Winston configurado para logs estructurados (ver `utils/logger.js`).
+-   Logging de solicitudes y errores en `server.js`.
+-   Logs de despliegue en la consola y logs de aplicación en el servidor (gestionados por PM2).
 
-4.  **¿Funcionó? ¡A Verificar!**:
-    *   Si todo sale bien, el script te dirá algo como "¡Aplicación iniciada correctamente!" o "Deployment completado con éxito".
-    *   Abre tu navegador de internet y ve a la dirección donde debería estar tu CRM en producción (ej. `https://tu-dominio-real.com` o `http://ip_de_tu_servidor:PUERTO_CONFIGURADO`).
-    *   Si ves tu CRM, ¡felicidades! ¡Lo lograste!
-    *   **Si algo sale mal**: El script tratará de decirte qué pasó. También puedes revisar los "logs" (como un diario de lo que hace la app) en tu servidor. El script usualmente te dice dónde están (algo como `/ruta/en/el_servidor/logs/app.log`).
+## 🤝 Contribuciones
+Seguir un flujo estándar: fork, rama de característica, pruebas, y pull request. Asegurar que el código pase el linting (`npm run lint`) y formateo (`npm run format`).
 
-¡Y listo! Desplegar puede parecer complicado, pero este script ayuda muchísimo. Recuerda siempre tener cuidado con tus contraseñas y llaves secretas.
+## 📄 Licencia
+Este proyecto está bajo la Licencia MIT.
 
-## 📊 API Endpoints (Illustrative - check `routes/` for specifics)
-
-Base path: `/api` (configurable via `API_PREFIX`)
-
-### Contact Management (`/contacts`)
--   `POST /` - Create contact (triggers AI analysis).
--   `GET /` - List contacts (supports filtering/pagination).
--   `PUT /:id` - Update contact (may trigger re-analysis).
--   `DELETE /:id` - Delete contact.
-
-### Twilio Communications (`/twilio`)
--   `POST /send-sms` - Send an SMS.
-    -   Body: `{ "to": "+1...", "body": "Hello", "from": "+1..." (optional) }`
--   `POST /make-call` - Initiate a call (spoof or regular).
-    -   Body: `{ "to": "+1...", "spoofNumber": "+1...", "message": "Connecting...", "record": false }`
--   Webhooks:
-    -   `POST /webhook/voice`
-    -   `POST /webhook/status`
-    -   `POST /webhook/recording`
--   Session Management (for active spoof calls):
-    -   `GET /session/:sessionId`
-    -   `POST /session/:sessionId/end`
-
-### AI & Advisor Endpoints (`/ai`, `/advisors`)
--   Endpoints for triggering database-wide analysis, contact distribution, managing advisors, etc. (Refer to specific route files like `ai.js`, `advisors.js`).
-
-## 🤖 AI Features in Detail (GeminiService)
-
-### Contact Quality Scoring (`SCORING_WEIGHTS`)
-The `geminiService.js` uses a weighted system:
--   `VALID_PHONE`: +30
--   `VALID_EMAIL`: +20
--   `COMPLETE_NAME`: +20 (full score for names with space, half otherwise)
--   `IS_COMPLETE`: +20 (if essential fields like name & valid phone are present)
--   `OPTIONAL_FIELDS_BONUS`: +10 (example, can be expanded)
--   `AI_SUSPICION_PENALTY`: -20 (if Gemini AI flags as suspicious or pattern matching is positive)
-The final score is capped between 0 and 100.
-
-### Suspicious Name Detection
-A list of regex patterns (e.g., `/^test/i`, `/(.)\1{2,}/`) is used for quick flagging.
-
-### Gemini AI Prompting
-A structured JSON-based prompt is sent to Gemini for:
--   Genuineness assessment (`is_genuine_person`)
--   Suspicion score and reason (`suspicion_score`, `suspicion_reason`)
--   Data completeness and accuracy scores
--   Specific quality issues and recommendations.
-
-### Contact Distribution Logic
-1.  Contacts: Sorted by `qualityScore` (desc), then `createdAt` (desc).
-2.  Advisors: Filtered for `isActive` and capacity. Sorted by `performanceScore` (desc), then `currentContactCount` (asc).
-3.  Assignment: Iterative, assigning best contacts to best available advisors.
-
-## 🔒 Security Features (Updated)
-
--   **Helmet.js**: Provides various security headers (CSP, XSS protection, etc.).
--   **CORS**: Configurable via `CORS_ORIGIN` for controlled cross-origin access.
--   **Rate Limiting**: Implemented via `express-rate-limit` (configuration in `middleware/rateLimiter.js`).
--   **Input Validation**: `express-validator` in controllers (e.g., `twilioController.js`).
--   **Password Hashing**: `bcrypt` with configurable salt rounds (`BCRYPT_SALT_ROUNDS`).
--   **SQL Injection Protection**: Via Sequelize ORM's parameterized queries.
--   **Graceful Shutdown**: Handles termination signals to prevent data corruption or abrupt disconnections.
--   **Environment Variable Management**: Critical configurations are externalized to `.env` files.
-
-## 📈 Performance Optimizations
-
--   **Response Compression**: `compression` middleware (gzip).
--   **Database Indexing**: Defined in Sequelize models for faster queries.
--   **Connection Pooling**: Managed by Sequelize.
--   **Efficient Deployment**: `rsync` in `deploy-production.sh`.
--   **Frontend Optimizations**: DOM caching and robust polling in `spoofCalling.js`.
--   *(Note: Redis caching was present in an older version, but removed from the current `package.json`. Can be re-added if needed.)*
-
-## 🧪 Testing
--   Manual testing of API endpoints using tools like Postman or `curl` is recommended.
--   `supertest` is included in `devDependencies` for potential future integration tests.
--   The `deploy-production.sh` script should be tested in a staging environment first.
-
-**Example `curl` for sending SMS:**
-```bash
-curl -X POST http://localhost:3001/api/twilio/send-sms \
-  -H "Content-Type: application/json" \
-  -d '{
-    "to": "+15551234567",
-    "body": "Hello from the CRM!",
-    "from": "+15557654321"
-  }'
-```
-
-## 📝 Logging & Monitoring
--   **Winston Logger**: Configured in `utils/logger.js` for structured JSON logs.
--   **Request Logging**: `server.js` logs details of each incoming request.
--   **Error Logging**: Global error handlers in `server.js` log unhandled errors. Specific services also log important events and errors.
--   **Deployment Logs**: `deploy-production.sh` provides console output. Application logs on server at `[remote_path]/logs/app.log`.
-
-## 🤝 Contributing
-Standard fork, feature branch, test, and pull request workflow. Ensure code passes linting (`npm run lint`) and formatting (`npm run format`).
-
-## 📄 License
-This project is licensed under the MIT License.
-
-## 🆘 Support
--   Check application logs (server-side and browser console).
--   Verify all `.env` variables are correctly set and loaded.
--   Ensure Twilio and Gemini API keys are valid and have necessary permissions.
--   Consult Twilio/Gemini dashboards for API call errors.
-
-## 🔮 Future Enhancements
--   Re-integrate Redis or another caching layer for high-traffic endpoints.
--   Develop comprehensive automated tests (unit, integration, e2e).
--   Implement full JWT-based authentication workflow.
--   Expand AI capabilities (e.g., sentiment analysis from call transcriptions if available).
--   User interface for managing `SCORING_WEIGHTS` or AI settings.
+## 🔮 Mejoras Futuras Anotadas
+-   **Importación/Exportación de Datos desde/hacia Hojas de Cálculo.**
+-   Implementación completa de paginación y búsqueda/filtrado del lado del servidor para Contactos y Asesores.
+-   Optimización de recursos estáticos del frontend (minificación).
+-   Revisión y activación completa de funcionalidades de Twilio y Gemini AI.
+-   Capa de caché (ej. Redis) para endpoints de alto tráfico.
+-   Pruebas automatizadas exhaustivas (unitarias, integración, E2E).
+-   Política de Seguridad de Contenido (CSP) más estricta.
 
 ---
-
-**Version 3.1.0** - Enhanced with robust services, security, and deployment.
+**Versión 3.2.0** - Funcionalidad de Super Administrador, RBAC y mejoras de seguridad.
+```

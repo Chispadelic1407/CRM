@@ -15,7 +15,9 @@ const twilioRoutes = require('./routes/twilio'); // Anteriormente spoofCallingRo
 const contactRoutes = require('./routes/contacts');
 const advisorRoutes = require('./routes/advisors');
 const aiRoutes = require('./routes/ai');
+const userRoutes = require('./routes/users'); // Importar nuevas rutas de usuarios
 const DatabaseService = require('./services/databaseService'); // Para inicialización
+const { apiLimiter, loginLimiter } = require('./middleware/rateLimiter'); // Importar limitadores
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -76,14 +78,17 @@ app.use((req, res, next) => {
 // Es buena práctica tener un prefijo base para todas las rutas de la API, ej. /api/v1
 const apiPrefix = process.env.API_PREFIX || '/api';
 
-app.use(`${apiPrefix}/auth`, authRoutes);
-app.use(`${apiPrefix}/twilio`, twilioRoutes); // Rutas para Twilio (antes spoof)
-app.use(`${apiPrefix}/contacts`, contactRoutes);
-app.use(`${apiPrefix}/advisors`, advisorRoutes);
-app.use(`${apiPrefix}/ai`, aiRoutes);
+// Aplicar rate limiters
+app.use(`${apiPrefix}/auth`, loginLimiter, authRoutes); // loginLimiter específico para auth
+app.use(`${apiPrefix}/twilio`, apiLimiter, twilioRoutes); // apiLimiter general para otras rutas API
+app.use(`${apiPrefix}/contacts`, apiLimiter, contactRoutes);
+app.use(`${apiPrefix}/advisors`, apiLimiter, advisorRoutes);
+app.use(`${apiPrefix}/ai`, apiLimiter, aiRoutes);
+app.use(`${apiPrefix}/users`, apiLimiter, userRoutes); // Registrar rutas de usuarios
 
-// Ruta de health check básica
-app.get(`${apiPrefix}/health`, (req, res) => {
+
+// Ruta de health check básica (puede o no estar sujeta a rate limiting general, dependiendo de la necesidad)
+app.get(`${apiPrefix}/health`, apiLimiter, (req, res) => {
     res.status(200).json({ status: 'UP', timestamp: new Date().toISOString() });
 });
 

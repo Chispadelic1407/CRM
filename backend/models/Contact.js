@@ -53,6 +53,14 @@ module.exports = (sequelize) => {
             type: DataTypes.DECIMAL(5, 2),
             defaultValue: 0,
             validate: { min: 0, max: 100 }
+        },
+        lastContactDate: {
+            type: DataTypes.DATE,
+            allowNull: true
+        },
+        contactCount: {
+            type: DataTypes.INTEGER,
+            defaultValue: 0
         }
         // otros campos
     }, {
