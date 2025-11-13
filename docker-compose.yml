@@ -1,0 +1,135 @@
+version: '3.8'
+
+services:
+  # Base de datos MariaDB
+  database:
+    image: mariadb:11
+    container_name: crm_database
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "3306:3306"
+    networks:
+      - crm_network
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      start_period: 10s
+      timeout: 5s
+      retries: 5
+      interval: 30s
+
+  # Aplicación CRM
+  crm_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: crm_application
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      
+      # Base de datos
+      DB_HOST: database
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_DIALECT: mysql
+      
+      # Seguridad
+      JWT_SECRET: ${JWT_SECRET}
+      BCRYPT_SALT_ROUNDS: ${BCRYPT_SALT_ROUNDS:-12}
+      
+      # CORS
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      
+      # Rate Limiting
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+      LOGIN_RATE_LIMIT_WINDOW_MS: ${LOGIN_RATE_LIMIT_WINDOW_MS:-900000}
+      LOGIN_RATE_LIMIT_MAX_REQUESTS: ${LOGIN_RATE_LIMIT_MAX_REQUESTS:-10}
+      
+      # Twilio (opcional)
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
+      AGENT_PHONE_NUMBER: ${AGENT_PHONE_NUMBER}
+      VOICE_WEBHOOK_URL: ${VOICE_WEBHOOK_URL}
+      
+      # Gemini AI (opcional)
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FILE_PATH: /app/logs/
+    volumes:
+      - app_logs:/app/logs
+    ports:
+      - "3001:3001"
+    networks:
+      - crm_network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3001/api/health || exit 1"]
+      start_period: 30s
+      timeout: 10s
+      retries: 3
+      interval: 30s
+
+  # Proxy reverso con Nginx (opcional)
+  nginx:
+    image: nginx:alpine
+    container_name: crm_nginx
+    restart: unless-stopped
+    depends_on:
+      crm_app:
+        condition: service_healthy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - nginx_logs:/var/log/nginx
+    networks:
+      - crm_network
+    profiles:
+      - with-proxy
+
+  # Herramientas de administración de BD (opcional)
+  adminer:
+    image: adminer:latest
+    container_name: crm_adminer
+    restart: unless-stopped
+    depends_on:
+      database:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - crm_network
+    profiles:
+      - with-adminer
+
+volumes:
+  db_data:
+    name: crm_database_data
+  app_logs:
+    name: crm_application_logs
+  nginx_logs:
+    name: crm_nginx_logs
+
+networks:
+  crm_network:
+    driver: bridge
+    name: crm_network
