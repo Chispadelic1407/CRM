@@ -8,10 +8,10 @@ set -e
 echo "🚀 Starting production deployment..."
 
 # Configuration
-SSH_HOST="access-5018020518.webspace-host.com"
-SSH_USER="a951193"
+SSH_HOST="8.219.175.183"
+SSH_USER="root"
 SSH_PORT="22"
-REMOTE_PATH="/home/a951193/crm-twilio"
+REMOTE_PATH="/root/crm-consolidated"
 LOCAL_PATH="."
 
 # Colors for output
@@ -53,15 +53,15 @@ mkdir -p dist/
 # Copy necessary files
 cp -r backend/ dist/
 cp -r frontend/ dist/
+cp -r scripts/ dist/
 cp package.json dist/
+cp ecosystem.config.js dist/
 cp .env.production dist/.env
 cp README.md dist/
 cp MANUAL_DE_USO.md dist/ 2>/dev/null || true
-cp -r config.php dist/ 2>/dev/null || true
-cp -r status.php dist/ 2>/dev/null || true
 
-# Create logs directory
-mkdir -p dist/logs/
+# Create necessary directories
+mkdir -p dist/backend/logs/
 
 print_status "Deployment package created in dist/"
 
@@ -93,36 +93,66 @@ print_status "Installing dependencies and starting application..."
 echo "Please enter the password for ${SSH_USER}@${SSH_HOST} when prompted for SSH connection:"
 
 ssh -p ${SSH_PORT} ${SSH_USER}@${SSH_HOST} << 'ENDSSH'
-cd /home/a951193/crm-twilio
+cd /root/crm-consolidated
 
 # Install Node.js dependencies
+echo "📦 Installing dependencies..."
+cd backend
 npm install --production
 
+# Return to root directory
+cd /root/crm-consolidated
+
+# Setup database
+echo "🗄️  Setting up database..."
+chmod +x scripts/setup-database.sh
+DB_FORCE_SYNC=true ./scripts/setup-database.sh
+
+if [ $? -ne 0 ]; then
+    echo "❌ Database setup failed. Aborting deployment."
+    exit 1
+fi
+
 # Stop any existing processes
-pkill -f "node.*server.js" || true
+echo "🔄 Stopping existing processes..."
+pm2 stop crm-avanza || true
+pm2 delete crm-avanza || true
 
-# Start the application
-nohup node backend/server.js > logs/app.log 2>&1 &
+# Start the application with PM2
+echo "🚀 Starting application with PM2..."
+pm2 start ecosystem.config.js
 
-# Wait a moment for startup
-sleep 3
+# Wait for startup
+sleep 5
 
 # Check if application is running
-if pgrep -f "node.*server.js" > /dev/null; then
+if pm2 list | grep -q "crm-avanza.*online"; then
     echo "✅ Application started successfully!"
-    echo "🌐 Application should be available at: https://access-5018020518.webspace-host.com:3001"
+    echo "🌐 Application should be available at: http://8.219.175.183"
+    echo ""
+    echo "📊 PM2 Status:"
+    pm2 status
+    echo ""
+    echo "📝 Recent logs:"
+    pm2 logs crm-avanza --lines 10 --nostream
 else
     echo "❌ Failed to start application. Check logs:"
-    tail -20 logs/app.log
+    pm2 logs crm-avanza --lines 50 --nostream
     exit 1
 fi
 ENDSSH
 
 print_status "Deployment completed successfully!"
-print_status "Application URL: https://access-5018020518.webspace-host.com:3001"
+print_status "Application URL: http://8.219.175.183"
 print_warning "Please verify the application is working by visiting the URL above."
 
 # Clean up local dist folder
 rm -rf dist/
 
+echo ""
 echo "🎉 Deployment finished!"
+echo ""
+echo "Next steps:"
+echo "  1. Visit http://8.219.175.183 to verify the application"
+echo "  2. Check PM2 status: ssh root@8.219.175.183 'pm2 status'"
+echo "  3. View logs: ssh root@8.219.175.183 'pm2 logs crm-avanza'"

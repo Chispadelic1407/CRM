@@ -8,8 +8,14 @@ async function initDatabase() {
         console.log('Database connected successfully');
         
         console.log('Synchronizing database tables...');
-        await sequelize.sync({ force: true }); // This will recreate tables
-        console.log('Database tables synchronized');
+        // Use alter: true to update existing tables without dropping data
+        // Use force: true only for fresh installations
+        const syncOptions = process.env.DB_FORCE_SYNC === 'true' 
+            ? { force: true } 
+            : { alter: true };
+        
+        await sequelize.sync(syncOptions);
+        console.log(`Database tables synchronized (${syncOptions.force ? 'force' : 'alter'} mode)`);
         
         console.log('Creating default users...');
         const defaultUsers = [
